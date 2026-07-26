@@ -18,6 +18,14 @@ let
   configFile = "${stateDir}/sabnzbd.ini";
 
   templateIni = iniGenerator.generateSabnzbdIni cfg.settings;
+
+  categoryDirs = map (
+    category:
+    if lib.hasPrefix "/" category.dir then
+      category.dir
+    else
+      "${cfg.settings.misc.complete_dir}/${category.dir}"
+  ) (lib.filter (category: category.dir != "") cfg.settings.categories);
 in
 {
   imports = [
@@ -167,15 +175,18 @@ in
           };
         }
         // lib.mergeAttrsList (
-          map mkDir [
-            cfg.downloadsDir
-            cfg.settings.misc.download_dir
-            cfg.settings.misc.complete_dir
-            cfg.settings.misc.dirscan_dir
-            cfg.settings.misc.nzb_backup_dir
-            cfg.settings.misc.admin_dir
-            cfg.settings.misc.log_dir
-          ]
+          map mkDir (
+            [
+              cfg.downloadsDir
+              cfg.settings.misc.download_dir
+              cfg.settings.misc.complete_dir
+              cfg.settings.misc.dirscan_dir
+              cfg.settings.misc.nzb_backup_dir
+              cfg.settings.misc.admin_dir
+              cfg.settings.misc.log_dir
+            ]
+            ++ categoryDirs
+          )
         );
 
       environment.etc."sabnzbd/sabnzbd.ini.template".text = templateIni;
@@ -222,16 +233,19 @@ in
           PrivateTmp = true;
           ProtectSystem = "strict";
           ProtectHome = true;
-          ReadWritePaths = quotePaths [
-            stateDir
-            cfg.downloadsDir
-            cfg.settings.misc.download_dir
-            cfg.settings.misc.complete_dir
-            cfg.settings.misc.dirscan_dir
-            cfg.settings.misc.nzb_backup_dir
-            cfg.settings.misc.admin_dir
-            cfg.settings.misc.log_dir
-          ];
+          ReadWritePaths = quotePaths (
+            [
+              stateDir
+              cfg.downloadsDir
+              cfg.settings.misc.download_dir
+              cfg.settings.misc.complete_dir
+              cfg.settings.misc.dirscan_dir
+              cfg.settings.misc.nzb_backup_dir
+              cfg.settings.misc.admin_dir
+              cfg.settings.misc.log_dir
+            ]
+            ++ categoryDirs
+          );
         };
       };
 
