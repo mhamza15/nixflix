@@ -11,12 +11,25 @@ let
   mkSecureCurl = import ../../lib/mk-secure-curl.nix { inherit lib pkgs; };
 
   allTagNames = lib.unique (
-    lib.concatMap (i: i.tags) cfg.config.indexers
+    cfg.config.tags
+    ++ lib.concatMap (i: i.tags) cfg.config.indexers
     ++ lib.concatMap (p: p.tags) cfg.config.indexerProxies
     ++ lib.concatMap (a: a.tags or [ ]) cfg.config.applications
   );
 in
 {
+  options.nixflix.prowlarr.config.tags = mkOption {
+    type = types.listOf types.str;
+    default = [ ];
+    example = [ "tv" ];
+    description = ''
+      Tags to create in Prowlarr regardless of whether anything references them, so they
+      are available when assigning tags by hand.
+
+      Tags named by an indexer, indexer proxy or application are always created.
+    '';
+  };
+
   config.systemd.services."prowlarr-tags" =
     mkIf (config.nixflix.enable && cfg.enable && cfg.config.apiKey != null)
       {
