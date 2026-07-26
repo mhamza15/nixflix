@@ -115,6 +115,18 @@ in
       description = "Subdomain prefix for reverse proxy. Service accessible at `<subdomain>.<domain>`.";
     };
 
+    prowlarrTags = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      example = [ "tv" ];
+      description = ''
+        Tags applied to this service's Prowlarr application.
+
+        Without tags the service receives every indexer. With tags it receives only the
+        indexers sharing at least one of them.
+      '';
+    };
+
     reverseProxy = {
       expose = mkOption {
         type = types.bool;
