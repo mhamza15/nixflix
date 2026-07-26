@@ -159,6 +159,15 @@ in
                 "*";
             description = "Bind address for the WebUI";
           };
+
+          Preferences.WebUI.Username = mkOption {
+            type = types.str;
+            default = "admin";
+            description = ''
+              Username for the WebUI. Services integrating with qBittorrent
+              authenticate as this user.
+            '';
+          };
         };
 
         connectionAddress = mkOption {
