@@ -37,6 +37,7 @@ let
       apiKey = mkDefault serviceConfig.apiKey;
       baseUrl = mkDefault baseUrl;
       prowlarrUrl = mkDefault prowlarrUrl;
+      tags = nixflix.${serviceName}.prowlarrTags;
     };
 
   defaultApplications = filter (app: app != { }) (map mkDefaultApplication arrServices);
