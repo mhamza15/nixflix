@@ -193,7 +193,12 @@ in
 
                   EXISTING_COLLECTION_TYPE=$(echo "$EXISTING_LIBRARY" | ${pkgs.jq}/bin/jq -r '.CollectionType // "unknown"')
                   EXISTING_ITEM_ID=$(echo "$EXISTING_LIBRARY" | ${pkgs.jq}/bin/jq -r '.ItemId')
-                  EXISTING_PATHS=$(echo "$EXISTING_LIBRARY" | ${pkgs.jq}/bin/jq -c '.Locations // []')
+                  # PathInfos holds the folders Jellyfin was told about. Locations only catches up on a
+                  # library scan, so it can omit folders that are already configured.
+                  EXISTING_PATHS=$(echo "$EXISTING_LIBRARY" | ${pkgs.jq}/bin/jq -c '
+                    ([.LibraryOptions.PathInfos // [] | .[].Path] | unique) as $pathInfos
+                    | if ($pathInfos | length) > 0 then $pathInfos else (.Locations // []) end
+                  ')
 
                   echo "Existing CollectionType: $EXISTING_COLLECTION_TYPE"
                   echo "Existing ItemId: $EXISTING_ITEM_ID"
