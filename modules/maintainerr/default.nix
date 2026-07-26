@@ -7,6 +7,7 @@
 with lib;
 let
   inherit (import ../../lib/mkVirtualHosts.nix { inherit lib config; }) mkVirtualHost;
+  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
   cfg = config.nixflix.maintainerr;
   hostname = "${cfg.subdomain}.${config.nixflix.reverseProxy.domain}";
 in
@@ -167,7 +168,7 @@ in
           PrivateDevices = true;
           ProtectSystem = "strict";
           ProtectHome = true;
-          ReadWritePaths = [
+          ReadWritePaths = quotePaths [
             cfg.dataDir
             config.nixflix.mediaDir
           ];

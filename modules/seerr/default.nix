@@ -8,6 +8,7 @@ with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
   inherit (import ../../lib/mkVirtualHosts.nix { inherit lib config; }) mkVirtualHost;
+  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePath;
   cfg = config.nixflix.seerr;
   hostname = "${cfg.subdomain}.${config.nixflix.reverseProxy.domain}";
 in
@@ -236,7 +237,7 @@ in
             PrivateDevices = true;
             ProtectSystem = "strict";
             ProtectHome = true;
-            ReadWritePaths = cfg.dataDir;
+            ReadWritePaths = quotePath cfg.dataDir;
             RestrictAddressFamilies = [
               "AF_UNIX"
               "AF_INET"

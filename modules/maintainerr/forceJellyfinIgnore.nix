@@ -8,6 +8,7 @@ with lib;
 let
   cfg = config.nixflix.maintainerr;
   secrets = import ../../lib/secrets { inherit lib; };
+  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
 
   maintainerrUrl = "http://${cfg.connectionAddress}:${toString cfg.port}";
 
@@ -136,7 +137,7 @@ in
             Type = "oneshot";
             ProtectSystem = "strict";
             ProtectHome = true;
-            ReadWritePaths = [ config.nixflix.mediaDir ];
+            ReadWritePaths = quotePaths [ config.nixflix.mediaDir ];
             PrivateTmp = true;
             ExecStart = pkgs.writeShellScript "maintainerr-jellyfin-ignore" (
               ''

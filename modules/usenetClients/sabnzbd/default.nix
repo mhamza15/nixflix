@@ -7,6 +7,7 @@
 with lib;
 let
   inherit (import ../../../lib/mkVirtualHosts.nix { inherit lib config; }) mkVirtualHost;
+  inherit (import ../../../lib/unit-paths.nix { inherit lib; }) quotePaths;
   cfg = config.nixflix.usenetClients.sabnzbd;
   hostname = "${cfg.subdomain}.${config.nixflix.reverseProxy.domain}";
 
@@ -221,7 +222,7 @@ in
           PrivateTmp = true;
           ProtectSystem = "strict";
           ProtectHome = true;
-          ReadWritePaths = [
+          ReadWritePaths = quotePaths [
             stateDir
             cfg.downloadsDir
             cfg.settings.misc.download_dir
