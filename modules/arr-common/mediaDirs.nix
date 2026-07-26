@@ -9,6 +9,7 @@ with lib;
 let
   cfg = config.nixflix.${serviceName};
   inherit (import ./utils.nix { inherit lib pkgs serviceName; }) usesMediaDirs;
+  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
   inherit (config.nixflix) globals;
 in
 {
@@ -33,7 +34,7 @@ in
 
     systemd.services.${serviceName}.serviceConfig = {
       SupplementaryGroups = [ globals.libraryOwner.group ];
-      ReadWritePaths = cfg.mediaDirs ++ [ config.nixflix.downloadsDir ];
+      ReadWritePaths = quotePaths (cfg.mediaDirs ++ [ config.nixflix.downloadsDir ]);
     };
   };
 }

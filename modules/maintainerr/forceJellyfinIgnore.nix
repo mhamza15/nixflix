@@ -7,6 +7,7 @@
 with lib;
 let
   cfg = config.nixflix.maintainerr;
+  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
 
   mediaDirsToScan =
     optionals config.nixflix.sonarr.enable config.nixflix.sonarr.mediaDirs
@@ -77,7 +78,7 @@ in
             Type = "oneshot";
             ProtectSystem = "strict";
             ProtectHome = true;
-            ReadWritePaths = mediaDirsToScan;
+            ReadWritePaths = quotePaths mediaDirsToScan;
             PrivateTmp = true;
             ExecStart = pkgs.writeShellScript "maintainerr-jellyfin-ignore" ''
               set -euo pipefail
