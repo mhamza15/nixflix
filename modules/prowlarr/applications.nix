@@ -35,6 +35,16 @@ in
           apiKey = secrets.mkSecretOption {
             description = "Path to file containing the API key for the application";
           };
+          tags = mkOption {
+            type = types.listOf types.str;
+            default = [ ];
+            description = ''
+              Use tags to control which indexers sync to this application.
+
+              An application without tags receives every indexer. An application with tags
+              receives only the indexers sharing at least one of them.
+            '';
+          };
         };
       }
     );
@@ -57,6 +67,7 @@ in
         description = "Configure Prowlarr applications via API";
         after = [
           "prowlarr-config.service"
+          "prowlarr-tags.service"
         ]
         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
@@ -64,6 +75,7 @@ in
         ++ lib.optional config.nixflix.lidarr.enable "lidarr-config.service";
         requires = [
           "prowlarr-config.service"
+          "prowlarr-tags.service"
         ]
         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
@@ -95,6 +107,15 @@ in
           APPLICATIONS=$(${
             mkSecureCurl cfg.config.apiKey {
               url = "$BASE_URL/applications";
+              extraArgs = "-S";
+            }
+          })
+
+          # Fetch all tags for name-to-ID resolution
+          echo "Fetching tags..."
+          ALL_TAGS=$(${
+            mkSecureCurl cfg.config.apiKey {
+              url = "$BASE_URL/tag";
               extraArgs = "-S";
             }
           })
@@ -132,6 +153,7 @@ in
               allOverrides = builtins.removeAttrs applicationConfig [
                 "implementationName"
                 "apiKey"
+                "tags"
               ];
               fieldOverrides = lib.filterAttrs (
                 name: value: value != null && !lib.hasPrefix "_" name
@@ -167,6 +189,9 @@ in
 
               FIELD_OVERRIDES=${escapeShellArg fieldOverridesJson}
 
+              TAG_IDS=$(echo "$ALL_TAGS" | ${pkgs.jq}/bin/jq --argjson names ${escapeShellArg (builtins.toJSON applicationConfig.tags)} \
+                '[.[] | select(.label as $l | $names | index($l)) | .id]')
+
               EXISTING_APPLICATION=$(echo "$APPLICATIONS" | ${pkgs.jq}/bin/jq -r --arg name ${escapeShellArg applicationName} '.[] | select(.name == $name) | @json' || echo "")
 
               if [ -n "$EXISTING_APPLICATION" ]; then
@@ -174,6 +199,7 @@ in
                 APPLICATION_ID=$(echo "$EXISTING_APPLICATION" | ${pkgs.jq}/bin/jq -r '.id')
 
                 UPDATED_APPLICATION=$(apply_field_overrides "$EXISTING_APPLICATION" "$FIELD_OVERRIDES")
+                UPDATED_APPLICATION=$(echo "$UPDATED_APPLICATION" | ${pkgs.jq}/bin/jq --argjson tags "$TAG_IDS" '.tags = $tags')
 
                 RESPONSE_FILE=$(mktemp)
                 set +e
@@ -213,6 +239,7 @@ in
                 fi
 
                 NEW_APPLICATION=$(apply_field_overrides "$SCHEMA" "$FIELD_OVERRIDES")
+                NEW_APPLICATION=$(echo "$NEW_APPLICATION" | ${pkgs.jq}/bin/jq --argjson tags "$TAG_IDS" '.tags = $tags')
 
                 RESPONSE_FILE=$(mktemp)
                 set +e
