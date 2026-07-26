@@ -37,6 +37,10 @@ in
         assertion = !(cfg.nginx.enable && cfg.caddy.enable);
         message = "nixflix.nginx.enable and nixflix.caddy.enable are mutually exclusive. Choose one reverse proxy.";
       }
+      {
+        assertion = !(cfg.externalProxy.enable && (cfg.nginx.enable || cfg.caddy.enable));
+        message = "nixflix.externalProxy.enable cannot be combined with the bundled nginx or Caddy reverse proxy. Choose one reverse proxy.";
+      }
     ];
 
     users.groups.media = {

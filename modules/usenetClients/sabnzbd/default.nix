@@ -147,6 +147,14 @@ in
         }
       ];
 
+      warnings =
+        lib.optional (cfg.settings.misc.inet_exposure >= 4 && (cfg.settings.misc.username or "") == "")
+          ''
+            SABnzbd is reachable beyond the local network but
+            `nixflix.usenetClients.sabnzbd.settings.misc.username` and `.password` are unset,
+            which leaves the web interface open to anyone who can reach it.
+          '';
+
       nixflix.usenetClients.sabnzbd.apiKeyPath = cfg.settings.misc.api_key._secret;
 
       users.users.${cfg.user} = {

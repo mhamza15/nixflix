@@ -64,12 +64,32 @@ in
       };
     };
 
+    externalProxy = {
+      enable = mkOption {
+        type = types.bool;
+        default = false;
+        example = true;
+        description = ''
+          Whether the services are reachable through a reverse proxy that nixflix does not
+          manage. Services then bind to localhost and trust the proxy hostname exactly as
+          they do with the bundled nginx or Caddy, but no virtual hosts are generated.
+        '';
+      };
+
+      domain = mkOption {
+        type = types.str;
+        default = "nixflix";
+        example = "example.com";
+        description = "Domain the external reverse proxy serves the services on.";
+      };
+    };
+
     reverseProxy = {
       enable = mkOption {
         type = types.bool;
         internal = true;
         readOnly = true;
-        default = cfg.nginx.enable || cfg.caddy.enable;
+        default = cfg.nginx.enable || cfg.caddy.enable || cfg.externalProxy.enable;
         description = "Whether any reverse proxy is enabled (derived, not user-facing).";
       };
 
@@ -82,6 +102,8 @@ in
             cfg.nginx.domain
           else if cfg.caddy.enable then
             cfg.caddy.domain
+          else if cfg.externalProxy.enable then
+            cfg.externalProxy.domain
           else
             "nixflix";
         description = "The active reverse proxy domain (derived).";
