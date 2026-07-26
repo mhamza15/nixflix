@@ -15,6 +15,7 @@ in
   config.nixflix.lidarr = {
     group = lib.mkDefault "media";
     mediaDirs = lib.mkDefault [ "${nixflix.mediaDir}/music" ];
+    prowlarrTags = lib.mkDefault [ "music" ];
     config = {
       apiVersion = lib.mkDefault "v1";
       hostConfig = {
