@@ -41,6 +41,16 @@ in
             description = "Passkey for the indexer.";
             nullable = true;
           };
+          enable = mkOption {
+            type = types.bool;
+            default = true;
+            description = ''
+              Whether the indexer is enabled.
+
+              A handful of indexer schemas ship disabled, so without this they would be
+              created in a disabled state.
+            '';
+          };
           appProfileId = mkOption {
             type = types.int;
             default = 1;
