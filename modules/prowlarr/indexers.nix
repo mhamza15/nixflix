@@ -182,7 +182,15 @@ in
               fieldOverrides = lib.filterAttrs (
                 name: value: value != null && !lib.hasPrefix "_" name
               ) allOverrides;
-              fieldOverridesJson = builtins.toJSON fieldOverrides;
+              fieldOverridesJson = builtins.toJSON (secrets.stripSecretRefs fieldOverrides);
+
+              nestedSecrets = secrets.mkNestedJqSecretArgs fieldOverrides;
+
+              overridesExpr =
+                if nestedSecrets.assignments == [ ] then
+                  "$overrides"
+                else
+                  "($overrides | ${lib.concatStringsSep " | " nestedSecrets.assignments})";
 
               jqSecrets = secrets.mkJqSecretArgs {
                 apiKey = if apiKey == null then "" else apiKey;
@@ -203,8 +211,10 @@ in
 
                 echo "$indexer_json" | ${pkgs.jq}/bin/jq \
                   ${jqSecrets.flagsString} \
+                  ${nestedSecrets.flagsString} \
                   --argjson overrides "$overrides" '
-                    .fields[] |= (
+                    ${overridesExpr} as $ov
+                    | .fields[] |= (
                       if (.name == "apiKey" or .name == "apikey") then
                         if ${jqSecrets.refs.apiKey} != "" then .value = ${jqSecrets.refs.apiKey}
                         elif ${jqSecrets.refs.apikey} != "" then .value = ${jqSecrets.refs.apikey}
@@ -216,11 +226,11 @@ in
                       else .
                       end
                     )
-                    | . + $overrides
+                    | . + $ov
                     | .fields[] |= (
                         . as $field |
-                        if $overrides[$field.name] != null then
-                          .value = $overrides[$field.name]
+                        if $ov[$field.name] != null then
+                          .value = $ov[$field.name]
                         else
                           .
                         end
