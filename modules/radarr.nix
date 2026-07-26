@@ -15,6 +15,7 @@ in
   config.nixflix.radarr = {
     group = lib.mkDefault "media";
     mediaDirs = lib.mkDefault [ "${nixflix.mediaDir}/movies" ];
+    prowlarrTags = lib.mkDefault [ "movies" ];
     config = {
       apiVersion = lib.mkDefault "v3";
       hostConfig = {

@@ -15,6 +15,7 @@ in
   config.nixflix.sonarr-anime = {
     group = lib.mkDefault "media";
     mediaDirs = lib.mkDefault [ "${nixflix.mediaDir}/anime" ];
+    prowlarrTags = lib.mkDefault [ "anime" ];
     config = {
       apiVersion = lib.mkDefault "v3";
       hostConfig = {

@@ -15,6 +15,7 @@ in
   config.nixflix.sonarr = {
     group = lib.mkDefault "media";
     mediaDirs = lib.mkDefault [ "${nixflix.mediaDir}/tv" ];
+    prowlarrTags = lib.mkDefault [ "tv" ];
     config = {
       apiVersion = lib.mkDefault "v3";
       hostConfig = {
