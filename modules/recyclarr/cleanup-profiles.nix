@@ -26,6 +26,7 @@ let
           credentialName
           apiKeyPath
           ;
+        serviceUnit = if instanceName == "sonarr_anime" then "sonarr-anime" else instanceName;
         apiVersion = instanceConfig.api_version or "v3";
         baseUrl = instanceConfig.base_url;
       }
@@ -42,8 +43,8 @@ in
     mkIf (config.nixflix.enable && cfg.enable && cfg.cleanupUnmanagedProfiles.enable)
       {
         description = "Cleanup unmanaged quality profiles from Sonarr/Radarr";
-        after = [ "recyclarr.service" ];
-        wants = [ "recyclarr.service" ];
+        after = [ "recyclarr.service" ] ++ map (i: "${i.serviceUnit}.service") allInstances;
+        wants = [ "recyclarr.service" ] ++ map (i: "${i.serviceUnit}.service") allInstances;
         wantedBy = [ "multi-user.target" ];
 
         serviceConfig = {
@@ -57,6 +58,11 @@ in
           PrivateDevices = true;
 
           LoadCredential = map (i: "${i.credentialName}:${i.apiKeyPath}") allInstances;
+
+          ExecStartPre = map (
+            i:
+            "${pkgs.curl}/bin/curl --retry 30 --retry-delay 2 --retry-connrefused -so /dev/null ${i.baseUrl}/api/${i.apiVersion}/system/status"
+          ) allInstances;
 
           ExecStart = pkgs.writeShellScript "cleanup-quality-profiles.sh" ''
             set -euo pipefail
