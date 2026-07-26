@@ -66,6 +66,9 @@ in
           branch = lib.mkDefault "master";
         };
         applications = lib.mkDefault defaultApplications;
+        tags = lib.mkDefault (
+          lib.unique (lib.concatMap (serviceName: nixflix.${serviceName}.prowlarrTags) arrServices)
+        );
       };
     }
   ];
