@@ -46,6 +46,46 @@ let
     description = "Categories per Starr service instance";
   };
 
+  arrServices = [
+    "radarr"
+    "sonarr"
+    "sonarr-anime"
+    "lidarr"
+    "prowlarr"
+  ];
+
+  # A blackhole client has no category. Each Starr service gets its own pair
+  # of folders instead, so their downloads stay apart. A null entry leaves the
+  # client off that service.
+  foldersOption = mkOption {
+    type = types.submodule {
+      options = genAttrs arrServices (
+        service:
+        mkOption {
+          type = types.nullOr (
+            types.submodule {
+              options = {
+                torrentFolder = mkOption {
+                  type = types.str;
+                  description = "Folder ${service} writes .torrent files to.";
+                };
+
+                watchFolder = mkOption {
+                  type = types.str;
+                  description = "Folder ${service} watches for finished downloads.";
+                };
+              };
+            }
+          );
+          default = null;
+          description = "Blackhole folders for ${service}. Null skips the service.";
+        }
+      );
+    };
+    default = { };
+    description = "Folders per Starr service instance.";
+  };
+
   mkDownloadClientType =
     {
       implementationName,
@@ -280,6 +320,38 @@ let
       };
     };
   };
+
+  # Torrent Blackhole talks to no client. The Starr service drops a .torrent
+  # into one folder and picks the finished download up from another. Host,
+  # port and urlBase exist on the type but mean nothing here.
+  blackholeType = mkDownloadClientType {
+    implementationName = "Torrent Blackhole";
+
+    extraOptions = {
+      folders = foldersOption;
+
+      readOnly = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Copy or hardlink on import instead of moving. Off by default so an
+          import within one filesystem is a rename.
+        '';
+      };
+
+      saveMagnetFiles = mkOption {
+        type = types.bool;
+        default = false;
+        description = "Write magnet links as files into the torrent folder.";
+      };
+
+      magnetFileExtension = mkOption {
+        type = types.str;
+        default = ".magnet";
+        description = "Extension for saved magnet files.";
+      };
+    };
+  };
 in
 {
   options.nixflix.downloadarr = mkOption {
@@ -313,6 +385,12 @@ in
           type = delugeType;
           default = { };
           description = "Deluge download client definition for Starr services.";
+        };
+
+        blackhole = mkOption {
+          type = blackholeType;
+          default = { };
+          description = "Torrent Blackhole download client definition for Starr services.";
         };
 
         transmission = mkOption {

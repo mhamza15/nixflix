@@ -41,17 +41,27 @@ let
     "prowlarr"
   ];
 
+  # A blackhole client carries a folder pair per service instead of a
+  # category. Only that service's pair reaches the API payload.
+  isBlackhole = client: client ? folders;
+
   transformClient =
     serviceName: client:
     let
       stripped = builtins.removeAttrs client [
         "categories"
         "dependencies"
+        "folders"
       ];
-      categoryField = categoryFieldFor serviceName;
-      categoryValue = client.categories.${serviceName};
     in
-    stripped // { ${categoryField} = categoryValue; };
+    if isBlackhole client then
+      stripped // client.folders.${serviceName}
+    else
+      stripped // { ${categoryFieldFor serviceName} = client.categories.${serviceName}; };
+
+  # A blackhole client with no folders for a service stays off that service.
+  clientsFor =
+    serviceName: filter (c: !(isBlackhole c) || c.folders.${serviceName} != null) allClients;
 
   mkDownloadClientsService =
     serviceName:
@@ -60,7 +70,7 @@ let
       capitalizedName =
         toUpper (builtins.substring 0 1 serviceName) + builtins.substring 1 (-1) serviceName;
 
-      clients = map (transformClient serviceName) allClients;
+      clients = map (transformClient serviceName) (clientsFor serviceName);
     in
     {
       "${serviceName}-downloadclients" = {
