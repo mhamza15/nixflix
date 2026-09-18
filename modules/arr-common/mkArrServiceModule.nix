@@ -52,6 +52,7 @@ in
     (import ./mediaDirs.nix { inherit serviceName; })
     (import ./postgres.nix { inherit serviceName; })
     (import ./rootFolders.nix { inherit serviceName; })
+    (import ./remotePathMappings.nix { inherit serviceName; })
   ];
 
   options.nixflix.${serviceName} = {
