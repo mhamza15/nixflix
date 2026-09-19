@@ -44,6 +44,46 @@ let
   '';
 in
 {
+  profilarr-service-generation =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            profilarr = {
+              enable = true;
+              apiKey = "0123456789abcdef0123456789abcdef";
+            };
+          };
+        }
+      ];
+      generated = config.config;
+      container = generated.virtualisation.oci-containers.containers.profilarr;
+      databasesService = generated.systemd.services.profilarr-databases;
+      hasExpectedDatabases =
+        generated.nixflix.profilarr.databases == [
+          {
+            name = "Dictionarry";
+            repositoryUrl = "https://github.com/Dictionarry-Hub/database";
+            syncStrategy = 60;
+            autoPull = true;
+            conflictStrategy = "override";
+          }
+          {
+            name = "trash-pcd";
+            repositoryUrl = "https://github.com/Dictionarry-Hub/trash-pcd";
+            syncStrategy = 1440;
+            autoPull = true;
+            conflictStrategy = "override";
+          }
+        ];
+      hasExpectedService =
+        container.image == "ghcr.io/dictionarry-hub/profilarr:2.2.0"
+        && container.ports == [ "0.0.0.0:6868:6868" ]
+        && databasesService.wantedBy == [ "multi-user.target" ];
+    in
+    assertTest "profilarr-service-generation" (hasExpectedDatabases && hasExpectedService);
+
   # Test that nixflix.sonarr options generate correct systemd units
   sonarr-service-generation =
     let
