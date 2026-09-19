@@ -81,8 +81,24 @@ in
         container.image == "ghcr.io/dictionarry-hub/profilarr:2.2.0"
         && container.ports == [ "0.0.0.0:6868:6868" ]
         && databasesService.wantedBy == [ "multi-user.target" ];
+      # The entrypoint chowns /config to PUID:PGID, so the data directory must
+      # be owned by the profilarr user and the ids must come from it too.
+      dataDir = generated.systemd.tmpfiles.settings."10-profilarr"."/var/lib/profilarr".d;
+      containerUnit = generated.systemd.services.${container.serviceName};
+      hasExpectedOwnership =
+        dataDir.user == "profilarr"
+        && dataDir.group == "profilarr"
+        && generated.users.users.profilarr.isSystemUser
+        && generated.users.users.profilarr.group == "profilarr"
+        && generated.users.groups ? profilarr
+        && !(container.environment ? PUID)
+        && !(container.environment ? PGID)
+        && lib.hasInfix "id -u profilarr" containerUnit.preStart
+        && lib.hasInfix "id -g profilarr" containerUnit.preStart;
     in
-    assertTest "profilarr-service-generation" (hasExpectedDatabases && hasExpectedService);
+    assertTest "profilarr-service-generation" (
+      hasExpectedDatabases && hasExpectedService && hasExpectedOwnership
+    );
 
   # Test that nixflix.sonarr options generate correct systemd units
   sonarr-service-generation =

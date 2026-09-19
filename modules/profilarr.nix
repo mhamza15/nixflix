@@ -109,6 +109,18 @@ in
       '';
     };
 
+    user = mkOption {
+      type = types.str;
+      default = "profilarr";
+      description = "User that owns the Profilarr data directory and runs the app in the container.";
+    };
+
+    group = mkOption {
+      type = types.str;
+      default = "profilarr";
+      description = "Group that owns the Profilarr data directory.";
+    };
+
     dataDir = mkOption {
       type = types.path;
       default = "${config.nixflix.stateDir}/profilarr";
@@ -124,7 +136,9 @@ in
 
     timeZone = mkOption {
       type = types.str;
-      default = config.time.timeZone or "Etc/UTC";
+      # time.timeZone is nullOr str, so `or` is not enough: it only guards a
+      # missing attribute, not a null value.
+      default = if config.time.timeZone != null then config.time.timeZone else "Etc/UTC";
       defaultText = literalExpression ''config.time.timeZone or "Etc/UTC"'';
       example = "America/New_York";
       description = "Time zone Profilarr uses for scheduled jobs.";
@@ -181,10 +195,21 @@ in
         message = "nixflix.profilarr.apiKey must contain at least 32 characters.";
       };
 
+      users.users.${cfg.user} = {
+        inherit (cfg) group;
+        isSystemUser = true;
+        home = cfg.dataDir;
+      };
+
+      users.groups.${cfg.group} = { };
+
+      # The container entrypoint runs as root and chowns /config to PUID:PGID
+      # before dropping privileges, so the directory has to be owned by the
+      # same user the container is told to use. Otherwise systemd-tmpfiles and
+      # the entrypoint fight over the owner on every start.
       systemd.tmpfiles.settings."10-profilarr".${cfg.dataDir}.d = {
         mode = "0750";
-        user = "root";
-        group = "root";
+        inherit (cfg) user group;
       };
 
       virtualisation.oci-containers.containers.profilarr = {
@@ -195,8 +220,6 @@ in
         volumes = [ "${cfg.dataDir}:/config" ];
         environment = {
           AUTH = "on";
-          PUID = "1000";
-          PGID = "1000";
           TZ = cfg.timeZone;
         };
         environmentFiles = [ "/run/profilarr/container.env" ];
@@ -209,6 +232,12 @@ in
           install -d -m 0700 /run/profilarr
           API_KEY=${secrets.toShellValue cfg.apiKey}
           printf 'PROFILARR_API_KEY=%s\n' "$API_KEY" > /run/profilarr/container.env
+          # PUID and PGID are resolved at runtime so the module does not have
+          # to pin a static uid for the profilarr user.
+          printf 'PUID=%s\n' "$(${pkgs.coreutils}/bin/id -u ${escapeShellArg cfg.user})" \
+            >> /run/profilarr/container.env
+          printf 'PGID=%s\n' "$(${pkgs.coreutils}/bin/id -g ${escapeShellArg cfg.user})" \
+            >> /run/profilarr/container.env
           chmod 0600 /run/profilarr/container.env
         '';
       };
