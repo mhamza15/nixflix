@@ -17,6 +17,156 @@ let
   databasePath = "${cfg.dataDir}/data/profilarr.db";
   sqlLiteral = value: "'${replaceStrings [ "'" ] [ "''" ] value}'";
 
+  # Every event Profilarr can notify about. Mirrors
+  # src/lib/shared/notifications/types.ts in the Profilarr repository.
+  notificationEvents = [
+    "announcement.new"
+    "arr.cleanup.failed"
+    "arr.cleanup.partial"
+    "arr.cleanup.success"
+    "arr.drift.detected"
+    "arr.drift.failed"
+    "arr.sync.failed"
+    "arr.sync.partial"
+    "arr.sync.success"
+    "backup.failed"
+    "backup.success"
+    "pcd.link_failed"
+    "pcd.linked"
+    "pcd.sync_failed"
+    "pcd.sync_success"
+    "pcd.unlinked"
+    "pcd.updates_available"
+    "rename.failed"
+    "rename.partial"
+    "rename.success"
+    "upgrade.failed"
+    "upgrade.partial"
+    "upgrade.success"
+  ];
+
+  notificationType = types.submodule {
+    options = {
+      enable = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Whether Profilarr sends to this service.";
+      };
+
+      type = mkOption {
+        type = types.enum [
+          "discord"
+          "ntfy"
+          "telegram"
+          "webhook"
+        ];
+        description = "Notifier the service uses.";
+      };
+
+      config = mkOption {
+        type = types.attrsOf (
+          types.oneOf [
+            types.str
+            types.bool
+            types.int
+            (types.submodule {
+              options._secret = mkOption {
+                type = types.oneOf [
+                  types.str
+                  types.path
+                ];
+                description = "Path to a file containing the secret value";
+              };
+            })
+          ]
+        );
+        default = { };
+        example = literalExpression ''
+          {
+            webhook_url._secret = "/run/secrets/discord-webhook";
+            username = "Profilarr";
+            enable_mentions = false;
+          }
+        '';
+        description = ''
+          Service settings, stored as Profilarr's `config` JSON. Keys follow the
+          notifier, for example `webhook_url`, `username`, `avatar_url` and
+          `enable_mentions` for Discord, `server_url`, `topic` and `token` for ntfy,
+          `bot_token` and `chat_id` for Telegram, `url` and `authorization` for a
+          plain webhook. Any string value may be `{ _secret = "/path"; }` and is
+          read from that file at runtime.
+        '';
+      };
+
+      events = mkOption {
+        type = types.listOf (types.enum notificationEvents);
+        default = notificationEvents;
+        defaultText = literalExpression "every Profilarr event";
+        description = "Events this service is subscribed to.";
+      };
+    };
+  };
+
+  # Profilarr rows created here carry this id prefix so the oneshot can tell
+  # them apart from services made in the UI and remove the ones no longer
+  # declared.
+  notificationId = name: "nixflix-${name}";
+
+  # Render one config value as a SQL expression for json_object. A secret is
+  # read with readfile so it never enters the Nix store.
+  notificationConfigValue =
+    value:
+    if secrets.isSecretRef value then
+      "trim(CAST(readfile(${sqlLiteral (toString value._secret)}) AS TEXT), char(10))"
+    else if builtins.isBool value then
+      "json(${sqlLiteral (boolToString value)})"
+    else if builtins.isInt value then
+      toString value
+    else
+      sqlLiteral value;
+
+  notificationConfigSql =
+    notificationConfig:
+    "json_object(${
+      concatStringsSep ", " (
+        mapAttrsToList (
+          key: value: "${sqlLiteral key}, ${notificationConfigValue value}"
+        ) notificationConfig
+      )
+    })";
+
+  mkNotificationSql = name: notification: ''
+    INSERT INTO notification_services (
+      id, name, service_type, enabled, config, enabled_types
+    ) VALUES (
+      ${sqlLiteral (notificationId name)},
+      ${sqlLiteral name},
+      ${sqlLiteral notification.type},
+      ${if notification.enable then "1" else "0"},
+      ${notificationConfigSql notification.config},
+      ${sqlLiteral (builtins.toJSON notification.events)}
+    ) ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      service_type = excluded.service_type,
+      enabled = excluded.enabled,
+      config = excluded.config,
+      enabled_types = excluded.enabled_types,
+      updated_at = CURRENT_TIMESTAMP;
+  '';
+
+  notificationsSql = ''
+    BEGIN IMMEDIATE;
+    ${concatStringsSep "\n" (mapAttrsToList mkNotificationSql cfg.notifications)}
+    DELETE FROM notification_services
+    WHERE id LIKE 'nixflix-%'
+      AND id NOT IN (${
+        concatStringsSep ", " (
+          [ "''" ] ++ map (name: sqlLiteral (notificationId name)) (attrNames cfg.notifications)
+        )
+      });
+    COMMIT;
+  '';
+
   databaseType = types.submodule {
     options = {
       name = mkOption {
@@ -394,6 +544,28 @@ in
         connectors created outside Nix are left untouched.
       '';
     };
+
+    notifications = mkOption {
+      type = types.attrsOf notificationType;
+      default = { };
+      example = literalExpression ''
+        {
+          Discord = {
+            type = "discord";
+            config = {
+              webhook_url._secret = "/run/secrets/discord-webhook";
+              username = "Profilarr";
+            };
+            events = [ "arr.sync.failed" "backup.failed" ];
+          };
+        }
+      '';
+      description = ''
+        Notification services managed by Nix, keyed by display name. Services
+        created in the UI are left untouched. A service removed from this set is
+        removed from Profilarr.
+      '';
+    };
   };
 
   config = mkIf (config.nixflix.enable && cfg.enable) (mkMerge [
@@ -512,6 +684,35 @@ in
           trap 'systemctl start ${escapeShellArg "${containerService}.service"}' EXIT
 
           ${concatMapStringsSep "\n" mkConnectorScript cfg.connectors}
+        '';
+      };
+
+      systemd.services.profilarr-notifications = mkIf (cfg.notifications != { }) {
+        description = "Configure Profilarr notification services";
+        after = [
+          "${containerService}.service"
+          "profilarr-databases.service"
+          "profilarr-connectors.service"
+        ];
+        wantedBy = [ "multi-user.target" ];
+
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+
+        path = [ pkgs.systemd ];
+
+        script = ''
+          set -eu
+          DATABASE=${escapeShellArg databasePath}
+
+          systemctl stop ${escapeShellArg "${containerService}.service"}
+          trap 'systemctl start ${escapeShellArg "${containerService}.service"}' EXIT
+
+          ${pkgs.sqlite}/bin/sqlite3 "$DATABASE" <<'SQL'
+          ${notificationsSql}
+          SQL
         '';
       };
 

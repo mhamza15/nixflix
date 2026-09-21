@@ -1404,4 +1404,68 @@ in
       )}
       echo 'PASS: notif-secret-in-any-field' > $out
     '';
+
+  profilarr-notifications =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            profilarr = {
+              enable = true;
+              apiKey = "0123456789abcdef0123456789abcdef";
+              notifications = {
+                Discord = {
+                  type = "discord";
+                  config = {
+                    webhook_url._secret = "/run/secrets/discord-webhook";
+                    username = "Profilarr";
+                    enable_mentions = false;
+                  };
+                  events = [
+                    "arr.sync.failed"
+                    "backup.failed"
+                  ];
+                };
+                Ops = {
+                  type = "ntfy";
+                  config = {
+                    server_url = "https://ntfy.example";
+                    topic = "profilarr";
+                  };
+                };
+              };
+            };
+          };
+        }
+      ];
+      service = config.config.systemd.services.profilarr-notifications;
+    in
+    pkgs.runCommand "unit-test-profilarr-notifications" { } ''
+      ${check "stops the container before touching the database" (
+        lib.hasInfix "systemctl stop" service.script
+      )}
+      ${check "upserts the discord row under a nixflix id" (
+        lib.hasInfix "'nixflix-Discord'" service.script && lib.hasInfix "'discord'" service.script
+      )}
+      ${check "reads the webhook secret from its file" (
+        lib.hasInfix "readfile('/run/secrets/discord-webhook')" service.script
+        && !lib.hasInfix "_secret" service.script
+      )}
+      ${check "serialises a boolean config value as JSON" (
+        lib.hasInfix "'enable_mentions', json('false')" service.script
+      )}
+      ${check "stores the selected events" (
+        lib.hasInfix ''["arr.sync.failed","backup.failed"]'' service.script
+      )}
+      ${check "a service without events subscribes to every event" (
+        lib.hasInfix ''"announcement.new"'' service.script
+        && lib.hasInfix ''"upgrade.success"'' service.script
+      )}
+      ${check "removes nixflix rows that are no longer declared" (
+        lib.hasInfix "DELETE FROM notification_services" service.script
+        && lib.hasInfix "LIKE 'nixflix-%'" service.script
+      )}
+      echo 'PASS: profilarr-notifications' > $out
+    '';
 }
