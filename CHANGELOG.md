@@ -14,12 +14,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `nixflix.notif.discord` for Discord webhook notifications on the Starr services
 - `nixflix.<arr>.manageMediaDirs` to skip the systemd-tmpfiles rule for media directories that live on a mount which owns them
 - Profilarr service with declarative Dictionarry and TRaSH PCD database syncing
 - Notif Service for configuring notification connectors in Starr apps ([#324](https://github.com/kiriwalawren/nixflix/pull/324))
 
 ### Fixed
 
+- `nixflix.notif` now resolves `{ _secret = ...; }` in any notification field at runtime instead of serialising the reference into the unit script
 - Jellyfin's derived libraries now use `lib.mkDefault` per field, so a user `paths` or `typeOptions` replaces the derived list instead of appending to it
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
 - Profilarr now runs as a dedicated `profilarr` user instead of a hardcoded uid 1000, and owns its data directory, so the container entrypoint no longer chowns it away from the declared owner

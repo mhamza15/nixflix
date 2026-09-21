@@ -138,7 +138,15 @@ let
                 "accessToken"
               ];
               fieldOverrides = filterAttrs (name: value: value != null && !hasPrefix "_" name) allOverrides;
-              fieldOverridesJson = builtins.toJSON fieldOverrides;
+              fieldOverridesJson = builtins.toJSON (secrets.stripSecretRefs fieldOverrides);
+
+              nestedSecrets = secrets.mkNestedJqSecretArgs fieldOverrides;
+
+              overridesExpr =
+                if nestedSecrets.assignments == [ ] then
+                  "$overrides"
+                else
+                  "($overrides | ${concatStringsSep " | " nestedSecrets.assignments})";
 
               jqSecrets = secrets.mkJqSecretArgs {
                 apiKey = if apiKey == null then "" else apiKey;
@@ -156,8 +164,10 @@ let
 
                 echo "$notification_json" | ${pkgs.jq}/bin/jq \
                   ${jqSecrets.flagsString} \
+                  ${nestedSecrets.flagsString} \
                   --argjson overrides "$overrides" '
-                    .fields[] |= (
+                    ${overridesExpr} as $ov
+                    | .fields[] |= (
                       if .name == "apiKey" and ${jqSecrets.refs.apiKey} != "" then .value = ${jqSecrets.refs.apiKey}
                       elif .name == "username" and ${jqSecrets.refs.username} != "" then .value = ${jqSecrets.refs.username}
                       elif .name == "password" and ${jqSecrets.refs.password} != "" then .value = ${jqSecrets.refs.password}
@@ -165,11 +175,11 @@ let
                       else .
                       end
                     )
-                    | . + $overrides
+                    | . + $ov
                     | .fields[] |= (
                         . as $field |
-                        if $overrides[$field.name] != null then
-                          .value = $overrides[$field.name]
+                        if $ov[$field.name] != null then
+                          .value = $ov[$field.name]
                         else
                           .
                         end

@@ -1348,4 +1348,60 @@ in
       )}
       echo 'PASS: jellyfin-default-library-override' > $out
     '';
+
+  notif-secret-in-any-field =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            radarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            notif.discord = {
+              enable = true;
+              webHookUrl._secret = "/run/secrets/discord-webhook";
+              username = "Sonarr";
+              onGrab = true;
+            };
+            notif.extraNotifications = [
+              {
+                name = "Pushover";
+                implementationName = "Pushover";
+                enable = true;
+                services = [ "radarr" ];
+                userKey._secret = "/run/secrets/pushover-user";
+              }
+            ];
+          };
+        }
+      ];
+      sonarrScript = config.config.systemd.services.sonarr-notifications.script;
+      radarrScript = config.config.systemd.services.radarr-notifications.script;
+    in
+    pkgs.runCommand "unit-test-notif-secret-in-any-field" { } ''
+      ${check "discord type is configured on sonarr" (lib.hasInfix "Discord" sonarrScript)}
+      ${check "webHookUrl secret ref is not serialised into the field overrides" (
+        !lib.hasInfix ''"webHookUrl":{"_secret"'' sonarrScript
+      )}
+      ${check "webHookUrl secret is read from its file at runtime" (
+        lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/discord-webhook" sonarrScript
+      )}
+      ${check "webHookUrl is assigned from the file content" (
+        lib.hasInfix ''["webHookUrl"] = ($nixflixSecret0Content'' sonarrScript
+      )}
+      ${check "plain discord fields still pass through" (
+        lib.hasInfix ''"onGrab":true'' sonarrScript && lib.hasInfix "--arg username Sonarr" sonarrScript
+      )}
+      ${check "extraNotifications secret in an arbitrary field is read at runtime" (
+        lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/pushover-user" radarrScript
+        && !lib.hasInfix ''"userKey":{"_secret"'' radarrScript
+      )}
+      echo 'PASS: notif-secret-in-any-field' > $out
+    '';
 }

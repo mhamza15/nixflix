@@ -219,6 +219,35 @@ let
       };
     };
   };
+
+  discordType = mkNotificationType {
+    implementationName = "Discord";
+
+    services.default = [
+      "sonarr"
+      "sonarr-anime"
+      "radarr"
+      "lidarr"
+    ];
+
+    extraOptions = {
+      webHookUrl = secrets.mkSecretOption {
+        description = "Discord channel webhook URL.";
+      };
+
+      username = mkOption {
+        type = types.str;
+        default = "";
+        description = "Username the webhook posts as. Empty keeps the webhook's own name.";
+      };
+
+      avatar = mkOption {
+        type = types.str;
+        default = "";
+        description = "Avatar URL the webhook posts with. Empty keeps the webhook's own avatar.";
+      };
+    };
+  };
 in
 {
   options.nixflix.notif = mkOption {
@@ -248,12 +277,24 @@ in
           description = "ntfy notification definition for Starr services.";
         };
 
+        discord = mkOption {
+          type = discordType;
+          default = { };
+          description = ''
+            Discord notification definition for Starr services.
+
+            Event toggles such as `onGrab`, `onDownload` or `onHealthIssue` are freeform
+            keys passed straight to the notification resource.
+          '';
+        };
+
         extraNotifications = mkOption {
           type = types.listOf (types.attrsOf types.anything);
           default = [ ];
           description = ''
             For more notification types, or if you have more than one instance of a specific type.
             Follows the same general schema as the other options. `implementationName` and `services` are required fields.
+            Any field may be `{ _secret = "/path"; }` and is read from that file at runtime.
 
             A list of implementation names can be acquired with:
 
