@@ -87,6 +87,59 @@ let
         default = 0;
         description = "Minutes between library refreshes; zero disables automatic refreshes.";
       };
+
+      sync = mkOption {
+        type = types.nullOr (
+          types.submodule {
+            options = {
+              trigger = mkOption {
+                type = types.enum [
+                  "manual"
+                  "on_pull"
+                ];
+                default = "on_pull";
+              };
+              mediaManagement = mkOption {
+                type = types.nullOr (
+                  types.submodule {
+                    options = {
+                      database = mkOption { type = types.str; };
+                      naming = mkOption { type = types.str; };
+                      qualityDefinitions = mkOption { type = types.str; };
+                      mediaSettings = mkOption { type = types.str; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              delayProfile = mkOption {
+                type = types.nullOr (
+                  types.submodule {
+                    options = {
+                      database = mkOption { type = types.str; };
+                      profile = mkOption { type = types.str; };
+                    };
+                  }
+                );
+                default = null;
+              };
+              qualityProfiles = mkOption {
+                type = types.listOf (
+                  types.submodule {
+                    options = {
+                      database = mkOption { type = types.str; };
+                      profile = mkOption { type = types.str; };
+                    };
+                  }
+                );
+                default = [ ];
+              };
+            };
+          }
+        );
+        default = null;
+        description = "Declarative sync selections for this Arr connector.";
+      };
     };
   };
 
@@ -143,6 +196,63 @@ let
       );
     COMMIT;
     SQL
+
+    ${optionalString (connector.sync != null) (
+      let
+        inherit (connector) sync;
+        media = sync.mediaManagement;
+        delay = sync.delayProfile;
+        databaseId = name: "(SELECT id FROM database_instances WHERE name = ${escapeShellArg name})";
+        qualityRows = concatMapStringsSep "\n" (profile: ''
+          INSERT INTO arr_sync_quality_profiles (instance_id, database_id, profile_name)
+          SELECT id, ${databaseId profile.database}, ${escapeShellArg profile.profile}
+          FROM arr_instances WHERE name = $NAME_SQL;
+        '') sync.qualityProfiles;
+      in
+      ''
+        ${pkgs.sqlite}/bin/sqlite3 "$DATABASE" <<SQL
+        PRAGMA foreign_keys = ON;
+        BEGIN IMMEDIATE;
+        ${optionalString (media != null) ''
+          INSERT INTO arr_sync_media_management (
+            instance_id, naming_database_id, quality_definitions_database_id,
+            media_settings_database_id, trigger, naming_config_name,
+            quality_definitions_config_name, media_settings_config_name
+          ) SELECT id, ${databaseId media.database}, ${databaseId media.database},
+            ${databaseId media.database}, ${escapeShellArg sync.trigger},
+            ${escapeShellArg media.naming}, ${escapeShellArg media.qualityDefinitions},
+            ${escapeShellArg media.mediaSettings}
+          FROM arr_instances WHERE name = $NAME_SQL
+          ON CONFLICT(instance_id) DO UPDATE SET
+            naming_database_id = excluded.naming_database_id,
+            quality_definitions_database_id = excluded.quality_definitions_database_id,
+            media_settings_database_id = excluded.media_settings_database_id,
+            trigger = excluded.trigger,
+            naming_config_name = excluded.naming_config_name,
+            quality_definitions_config_name = excluded.quality_definitions_config_name,
+            media_settings_config_name = excluded.media_settings_config_name;
+        ''}
+        ${optionalString (delay != null) ''
+          INSERT INTO arr_sync_delay_profiles_config (
+            instance_id, trigger, database_id, profile_name
+          ) SELECT id, ${escapeShellArg sync.trigger}, ${databaseId delay.database},
+            ${escapeShellArg delay.profile}
+          FROM arr_instances WHERE name = $NAME_SQL
+          ON CONFLICT(instance_id) DO UPDATE SET
+            trigger = excluded.trigger,
+            database_id = excluded.database_id,
+            profile_name = excluded.profile_name;
+        ''}
+        INSERT INTO arr_sync_quality_profiles_config (instance_id, trigger)
+        SELECT id, ${escapeShellArg sync.trigger} FROM arr_instances WHERE name = $NAME_SQL
+        ON CONFLICT(instance_id) DO UPDATE SET trigger = excluded.trigger;
+        DELETE FROM arr_sync_quality_profiles
+        WHERE instance_id = (SELECT id FROM arr_instances WHERE name = $NAME_SQL);
+        ${qualityRows}
+        COMMIT;
+        SQL
+      ''
+    )}
   '';
 
   mkDatabaseScript =

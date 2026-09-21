@@ -53,6 +53,32 @@ in
             profilarr = {
               enable = true;
               apiKey = "0123456789abcdef0123456789abcdef";
+              connectors = [
+                {
+                  name = "Radarr";
+                  type = "radarr";
+                  url = "http://127.0.0.1:7878";
+                  apiKey = "radarr-secret";
+                  sync = {
+                    mediaManagement = {
+                      database = "Dictionarry";
+                      naming = "Radarr";
+                      qualityDefinitions = "Radarr";
+                      mediaSettings = "Radarr";
+                    };
+                    delayProfile = {
+                      database = "Dictionarry";
+                      profile = "Radarr";
+                    };
+                    qualityProfiles = [
+                      {
+                        database = "Dictionarry";
+                        profile = "2160p Remux";
+                      }
+                    ];
+                  };
+                }
+              ];
             };
           };
         }
@@ -60,6 +86,7 @@ in
       generated = config.config;
       container = generated.virtualisation.oci-containers.containers.profilarr;
       databasesService = generated.systemd.services.profilarr-databases;
+      connectorsService = generated.systemd.services.profilarr-connectors;
       hasExpectedDatabases =
         generated.nixflix.profilarr.databases == [
           {
@@ -81,6 +108,11 @@ in
         container.image == "ghcr.io/dictionarry-hub/profilarr:2.2.0"
         && container.ports == [ "0.0.0.0:6868:6868" ]
         && databasesService.wantedBy == [ "multi-user.target" ];
+      hasExpectedSyncConfig =
+        lib.hasInfix "INSERT INTO arr_sync_media_management" connectorsService.script
+        && lib.hasInfix "INSERT INTO arr_sync_delay_profiles_config" connectorsService.script
+        && lib.hasInfix "INSERT INTO arr_sync_quality_profiles" connectorsService.script
+        && lib.hasInfix "2160p Remux" connectorsService.script;
       # The entrypoint chowns /config to PUID:PGID, so the data directory must
       # be owned by the profilarr user and the ids must come from it too.
       dataDir = generated.systemd.tmpfiles.settings."10-profilarr"."/var/lib/profilarr".d;
@@ -97,7 +129,7 @@ in
         && lib.hasInfix "id -g profilarr" containerUnit.preStart;
     in
     assertTest "profilarr-service-generation" (
-      hasExpectedDatabases && hasExpectedService && hasExpectedOwnership
+      hasExpectedDatabases && hasExpectedService && hasExpectedSyncConfig && hasExpectedOwnership
     );
 
   # Test that nixflix.sonarr options generate correct systemd units
