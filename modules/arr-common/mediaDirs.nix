@@ -20,16 +20,30 @@ in
       defaultText = literalExpression ''[config.nixflix.mediaDir + "/<media-type>"]'';
       description = "List of media directories to create and manage";
     };
+
+    manageMediaDirs = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Whether to create `mediaDirs` and set their owner and mode with
+        systemd-tmpfiles. Disable this when the directories live on a
+        filesystem that owns them itself, such as a network or FUSE mount
+        where a chown fails and takes the whole tmpfiles run down with it.
+        The service still gets read-write access to the directories.
+      '';
+    };
   };
 
   config = mkIf (usesMediaDirs && config.nixflix.enable && cfg.enable) {
-    systemd.tmpfiles.settings."10-${serviceName}" = lib.mergeAttrsList (
-      map (mediaDir: {
-        "${mediaDir}".d = {
-          inherit (globals.libraryOwner) user group;
-          mode = "0775";
-        };
-      }) cfg.mediaDirs
+    systemd.tmpfiles.settings."10-${serviceName}" = mkIf cfg.manageMediaDirs (
+      lib.mergeAttrsList (
+        map (mediaDir: {
+          "${mediaDir}".d = {
+            inherit (globals.libraryOwner) user group;
+            mode = "0775";
+          };
+        }) cfg.mediaDirs
+      )
     );
 
     systemd.services.${serviceName}.serviceConfig = {

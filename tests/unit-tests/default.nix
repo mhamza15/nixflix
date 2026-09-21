@@ -1178,4 +1178,43 @@ in
         fi
         echo 'PASS: nested-secret-in-list-jq-filter' > $out
       '';
+
+  arr-unmanaged-media-dirs =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            sonarr = {
+              enable = true;
+              manageMediaDirs = false;
+              mediaDirs = [ "/mnt/remote/tv" ];
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            radarr = {
+              enable = true;
+              mediaDirs = [ "/srv/media/movies" ];
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+          };
+        }
+      ];
+      tmpfiles = config.config.systemd.tmpfiles.settings;
+      sonarrUnit = config.config.systemd.services.sonarr.serviceConfig;
+    in
+    pkgs.runCommand "unit-test-arr-unmanaged-media-dirs" { } ''
+      ${check "unmanaged sonarr has no tmpfiles rule for its media dir" (
+        !(tmpfiles ? "10-sonarr" && tmpfiles."10-sonarr" ? "/mnt/remote/tv")
+      )}
+      ${check "unmanaged sonarr still gets ReadWritePaths" (
+        lib.any (lib.hasInfix "/mnt/remote/tv") sonarrUnit.ReadWritePaths
+      )}
+      ${check "unmanaged sonarr still joins the media group" (
+        lib.elem "media" sonarrUnit.SupplementaryGroups
+      )}
+      ${check "managed radarr keeps its tmpfiles rule" (
+        tmpfiles."10-radarr"."/srv/media/movies".d.mode == "0775"
+      )}
+      echo 'PASS: arr-unmanaged-media-dirs' > $out
+    '';
 }
