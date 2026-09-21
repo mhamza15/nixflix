@@ -1217,4 +1217,77 @@ in
       )}
       echo 'PASS: arr-unmanaged-media-dirs' > $out
     '';
+
+  seerr-partial-instance-override =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            sonarr-anime = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-anime-api";
+            };
+            radarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+              sonarr.Sonarr.activeProfileName = "WEB-1080p";
+              radarr.Radarr = {
+                activeProfileName = "HD-1080p";
+                isDefault = false;
+              };
+            };
+          };
+        }
+      ];
+      inherit (config.config.nixflix.seerr) sonarr radarr;
+    in
+    pkgs.runCommand "unit-test-seerr-partial-instance-override" { } ''
+      ${check "overriding one Sonarr field keeps the derived hostname" (
+        sonarr.Sonarr.hostname == "127.0.0.1"
+      )}
+      ${check "overriding one Sonarr field keeps the derived apiKey" (
+        sonarr.Sonarr.apiKey._secret == "/run/secrets/sonarr-api"
+      )}
+      ${check "overriding one Sonarr field applies the override" (
+        sonarr.Sonarr.activeProfileName == "WEB-1080p"
+      )}
+      ${check "overriding one Sonarr field keeps the other derived instance" (
+        sonarr ? "Sonarr Anime" && sonarr."Sonarr Anime".animeSeriesType == "anime"
+      )}
+      ${check "a user value wins over a derived Radarr default" (
+        radarr.Radarr.isDefault == false && radarr.Radarr.activeProfileName == "HD-1080p"
+      )}
+      ${check "the derived Radarr port survives" (radarr.Radarr.port == 7878)}
+      echo 'PASS: seerr-partial-instance-override' > $out
+    '';
+
+  seerr-force-empty-instances =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+              sonarr = lib.mkForce { };
+            };
+          };
+        }
+      ];
+    in
+    assertTest "seerr-force-empty-instances" (config.config.nixflix.seerr.sonarr == { });
 }

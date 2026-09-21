@@ -112,11 +112,12 @@ in
 {
   options.nixflix.seerr.radarr = mkOption {
     type = types.attrsOf radarrServerModule;
-    default = defaultInstance;
+    default = { };
     description = ''
       Radarr instances to configure. Automatically configured from `config.nixflix.radarr` when enabled, otherwise `{}`.
 
-      Default instances can be overridden with `lib.mkForce {}`.
+      Each derived field is a `lib.mkDefault`, so setting one field on a derived
+      instance keeps the rest. Drop every derived instance with `lib.mkForce {}`.
     '';
     example = {
       Radarr = {
@@ -132,4 +133,6 @@ in
       };
     };
   };
+
+  config.nixflix.seerr.radarr = mapAttrs (_: mapAttrs (_: mkDefault)) defaultInstance;
 }

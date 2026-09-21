@@ -160,11 +160,12 @@ in
 {
   options.nixflix.seerr.sonarr = mkOption {
     type = types.attrsOf sonarrServerModule;
-    default = defaultInstances;
+    default = { };
     description = ''
       Sonarr instances to configure. Automatically configured from `config.nixflix.sonarr` and `config.nixflix.sonarr-anime` when enabled, otherwise `{}`.
 
-      Default instances can be overridden with `lib.mkForce {}`.
+      Each derived field is a `lib.mkDefault`, so setting one field on a derived
+      instance keeps the rest. Drop every derived instance with `lib.mkForce {}`.
     '';
     example = {
       Sonarr = {
@@ -179,4 +180,6 @@ in
       };
     };
   };
+
+  config.nixflix.seerr.sonarr = mapAttrs (_: mapAttrs (_: mkDefault)) defaultInstances;
 }
