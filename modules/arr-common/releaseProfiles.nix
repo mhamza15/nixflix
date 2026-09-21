@@ -113,12 +113,13 @@ in
                 })
                 tag_id=$(echo "$existing_tags" | ${pkgs.jq}/bin/jq -r --arg name "$tag_name" '[.[] | select(.label == $name)][0].id // empty')
                 if [ -z "$tag_id" ]; then
+                  tag_payload=$(${pkgs.jq}/bin/jq -cn --arg label "$tag_name" '{label: $label}')
                   tag_id=$(${
                     mkSecureCurl cfg.config.apiKey {
                       url = "$BASE_URL/tag";
                       method = "POST";
                       headers."Content-Type" = "application/json";
-                      data = ''"$(${pkgs.jq}/bin/jq -cn --arg label "$tag_name" '{label: $label}')"'';
+                      data = "$tag_payload";
                       extraArgs = "-Sf";
                     }
                   } | ${pkgs.jq}/bin/jq -r '.id')
@@ -142,7 +143,7 @@ in
                     url = "$BASE_URL/releaseprofile/$profile_id";
                     method = "PUT";
                     headers."Content-Type" = "application/json";
-                    data = ''"$payload"'';
+                    data = "$payload";
                     extraArgs = "-Sf";
                   }
                 } >/dev/null
@@ -152,7 +153,7 @@ in
                     url = "$BASE_URL/releaseprofile";
                     method = "POST";
                     headers."Content-Type" = "application/json";
-                    data = ''"$payload"'';
+                    data = "$payload";
                     extraArgs = "-Sf";
                   }
                 } >/dev/null
