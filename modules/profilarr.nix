@@ -14,6 +14,7 @@ let
   hostname = "${cfg.subdomain}.${config.nixflix.reverseProxy.domain}";
   containerService = config.virtualisation.oci-containers.containers.profilarr.serviceName;
   apiUrl = "http://127.0.0.1:${toString cfg.port}/api/v1";
+  databasePath = "${cfg.dataDir}/data/profilarr.db";
 
   databaseType = types.submodule {
     options = {
@@ -50,6 +51,99 @@ let
       };
     };
   };
+
+  connectorType = types.submodule {
+    options = {
+      name = mkOption {
+        type = types.str;
+        description = "Display name and stable Nix ownership key for the Arr connector.";
+      };
+
+      type = mkOption {
+        type = types.enum [
+          "radarr"
+          "sonarr"
+        ];
+        description = "The Arr application type.";
+      };
+
+      url = mkOption {
+        type = types.str;
+        description = "Internal URL Profilarr uses for API calls.";
+      };
+
+      externalUrl = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Optional browser-facing URL used by Profilarr UI links.";
+      };
+
+      apiKey = secrets.mkSecretOption {
+        description = "API key Profilarr uses to access this Arr instance.";
+      };
+
+      libraryRefreshInterval = mkOption {
+        type = types.ints.unsigned;
+        default = 0;
+        description = "Minutes between library refreshes; zero disables automatic refreshes.";
+      };
+    };
+  };
+
+  mkConnectorScript = connector: ''
+    NAME=${escapeShellArg connector.name}
+    TYPE=${escapeShellArg connector.type}
+    URL=${escapeShellArg connector.url}
+    EXTERNAL_URL=${escapeShellArg (if connector.externalUrl == null then "" else connector.externalUrl)}
+    API_KEY=${secrets.toShellValue connector.apiKey}
+
+    if [ -z "$API_KEY" ]; then
+      echo "Profilarr connector $NAME has an empty API key" >&2
+      exit 1
+    fi
+
+    sql_string() {
+      printf "'%s'" "$(printf '%s' "$1" | ${pkgs.gnused}/bin/sed "s/'/\\x27\\x27/g")"
+    }
+
+    NAME_SQL=$(sql_string "$NAME")
+    TYPE_SQL=$(sql_string "$TYPE")
+    URL_SQL=$(sql_string "$URL")
+    API_KEY_SQL=$(sql_string "$API_KEY")
+    EXTERNAL_URL_SQL="NULL"
+    if [ -n "$EXTERNAL_URL" ]; then
+      EXTERNAL_URL_SQL=$(sql_string "$EXTERNAL_URL")
+    fi
+
+    ${pkgs.sqlite}/bin/sqlite3 "$DATABASE" <<SQL
+    PRAGMA foreign_keys = ON;
+    BEGIN IMMEDIATE;
+    INSERT INTO arr_instances (
+      name, type, url, external_url, api_key, enabled, library_refresh_interval
+    ) VALUES (
+      $NAME_SQL, $TYPE_SQL, $URL_SQL, $EXTERNAL_URL_SQL, $API_KEY_SQL,
+      1, ${toString connector.libraryRefreshInterval}
+    ) ON CONFLICT(name) DO UPDATE SET
+      type = excluded.type,
+      url = excluded.url,
+      external_url = excluded.external_url,
+      api_key = excluded.api_key,
+      enabled = excluded.enabled,
+      library_refresh_interval = excluded.library_refresh_interval,
+      updated_at = CURRENT_TIMESTAMP;
+    INSERT INTO arr_sync_database_priority (instance_id, database_id, priority)
+    SELECT arr.id, database.id, ROW_NUMBER() OVER (ORDER BY database.id)
+    FROM arr_instances AS arr
+    CROSS JOIN database_instances AS database
+    WHERE arr.name = $NAME_SQL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM arr_sync_database_priority AS priority
+        WHERE priority.instance_id = arr.id AND priority.database_id = database.id
+      );
+    COMMIT;
+    SQL
+  '';
 
   mkDatabaseScript =
     database:
@@ -180,6 +274,15 @@ in
       ];
       description = "Profilarr databases to link and keep configured.";
     };
+
+    connectors = mkOption {
+      type = types.listOf connectorType;
+      default = [ ];
+      description = ''
+        Arr instances managed by Nix. Existing connectors with matching names are updated;
+        connectors created outside Nix are left untouched.
+      '';
+    };
   };
 
   config = mkIf (config.nixflix.enable && cfg.enable) (mkMerge [
@@ -268,6 +371,36 @@ in
           })
 
           ${concatMapStringsSep "\n" mkDatabaseScript cfg.databases}
+        '';
+      };
+
+      systemd.services.profilarr-connectors = mkIf (cfg.connectors != [ ]) {
+        description = "Configure Profilarr Arr connectors";
+        after = [
+          "${containerService}.service"
+          "profilarr-databases.service"
+        ];
+        wantedBy = [ "multi-user.target" ];
+
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+
+        path = [
+          pkgs.coreutils
+          pkgs.gnused
+          pkgs.systemd
+        ];
+
+        script = ''
+          set -eu
+          DATABASE=${escapeShellArg databasePath}
+
+          systemctl stop ${escapeShellArg "${containerService}.service"}
+          trap 'systemctl start ${escapeShellArg "${containerService}.service"}' EXIT
+
+          ${concatMapStringsSep "\n" mkConnectorScript cfg.connectors}
         '';
       };
 
