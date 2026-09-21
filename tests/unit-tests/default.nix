@@ -151,6 +151,13 @@ in
                   password._secret = "/run/secrets/sonarr-pass";
                 };
                 apiKey._secret = "/run/secrets/sonarr-api";
+                releaseProfiles = [
+                  {
+                    name = "Extended/Superfan";
+                    required = [ "extended" ];
+                    tags = [ "extended" ];
+                  }
+                ];
                 rootFolders = [ { path = "/media/tv"; } ];
               };
             };
@@ -158,10 +165,17 @@ in
         }
       ];
       systemdUnits = config.config.systemd.services;
+      releaseProfilesService = systemdUnits.sonarr-releaseprofiles;
       hasAllServices =
-        systemdUnits ? sonarr && systemdUnits ? sonarr-config && systemdUnits ? sonarr-rootfolders;
+        systemdUnits ? sonarr
+        && systemdUnits ? sonarr-config
+        && systemdUnits ? sonarr-rootfolders
+        && systemdUnits ? sonarr-releaseprofiles;
+      hasReleaseProfile =
+        lib.hasInfix "Extended/Superfan" releaseProfilesService.script
+        && lib.hasInfix "releaseprofile" releaseProfilesService.script;
     in
-    assertTest "sonarr-service-generation" hasAllServices;
+    assertTest "sonarr-service-generation" (hasAllServices && hasReleaseProfile);
 
   # Test that nixflix.sonarr-anime options generate correct systemd units
   sonarr-anime-service-generation =
