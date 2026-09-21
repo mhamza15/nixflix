@@ -112,6 +112,8 @@ in
         lib.hasInfix "INSERT INTO arr_sync_media_management" connectorsService.script
         && lib.hasInfix "INSERT INTO arr_sync_delay_profiles_config" connectorsService.script
         && lib.hasInfix "INSERT INTO arr_sync_quality_profiles" connectorsService.script
+        && lib.hasInfix "SELECT id, 'on_pull'" connectorsService.script
+        && lib.hasInfix "WHERE name = 'Dictionarry'" connectorsService.script
         && lib.hasInfix "2160p Remux" connectorsService.script;
       # The entrypoint chowns /config to PUID:PGID, so the data directory must
       # be owned by the profilarr user and the ids must come from it too.

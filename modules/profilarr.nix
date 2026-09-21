@@ -15,6 +15,7 @@ let
   containerService = config.virtualisation.oci-containers.containers.profilarr.serviceName;
   apiUrl = "http://127.0.0.1:${toString cfg.port}/api/v1";
   databasePath = "${cfg.dataDir}/data/profilarr.db";
+  sqlLiteral = value: "'${replaceStrings [ "'" ] [ "''" ] value}'";
 
   databaseType = types.submodule {
     options = {
@@ -202,10 +203,10 @@ let
         inherit (connector) sync;
         media = sync.mediaManagement;
         delay = sync.delayProfile;
-        databaseId = name: "(SELECT id FROM database_instances WHERE name = ${escapeShellArg name})";
+        databaseId = name: "(SELECT id FROM database_instances WHERE name = ${sqlLiteral name})";
         qualityRows = concatMapStringsSep "\n" (profile: ''
           INSERT INTO arr_sync_quality_profiles (instance_id, database_id, profile_name)
-          SELECT id, ${databaseId profile.database}, ${escapeShellArg profile.profile}
+          SELECT id, ${databaseId profile.database}, ${sqlLiteral profile.profile}
           FROM arr_instances WHERE name = $NAME_SQL;
         '') sync.qualityProfiles;
       in
@@ -219,9 +220,9 @@ let
             media_settings_database_id, trigger, naming_config_name,
             quality_definitions_config_name, media_settings_config_name
           ) SELECT id, ${databaseId media.database}, ${databaseId media.database},
-            ${databaseId media.database}, ${escapeShellArg sync.trigger},
-            ${escapeShellArg media.naming}, ${escapeShellArg media.qualityDefinitions},
-            ${escapeShellArg media.mediaSettings}
+            ${databaseId media.database}, ${sqlLiteral sync.trigger},
+            ${sqlLiteral media.naming}, ${sqlLiteral media.qualityDefinitions},
+            ${sqlLiteral media.mediaSettings}
           FROM arr_instances WHERE name = $NAME_SQL
           ON CONFLICT(instance_id) DO UPDATE SET
             naming_database_id = excluded.naming_database_id,
@@ -235,8 +236,8 @@ let
         ${optionalString (delay != null) ''
           INSERT INTO arr_sync_delay_profiles_config (
             instance_id, trigger, database_id, profile_name
-          ) SELECT id, ${escapeShellArg sync.trigger}, ${databaseId delay.database},
-            ${escapeShellArg delay.profile}
+          ) SELECT id, ${sqlLiteral sync.trigger}, ${databaseId delay.database},
+            ${sqlLiteral delay.profile}
           FROM arr_instances WHERE name = $NAME_SQL
           ON CONFLICT(instance_id) DO UPDATE SET
             trigger = excluded.trigger,
@@ -244,7 +245,7 @@ let
             profile_name = excluded.profile_name;
         ''}
         INSERT INTO arr_sync_quality_profiles_config (instance_id, trigger)
-        SELECT id, ${escapeShellArg sync.trigger} FROM arr_instances WHERE name = $NAME_SQL
+        SELECT id, ${sqlLiteral sync.trigger} FROM arr_instances WHERE name = $NAME_SQL
         ON CONFLICT(instance_id) DO UPDATE SET trigger = excluded.trigger;
         DELETE FROM arr_sync_quality_profiles
         WHERE instance_id = (SELECT id FROM arr_instances WHERE name = $NAME_SQL);
