@@ -1468,4 +1468,62 @@ in
       )}
       echo 'PASS: profilarr-notifications' > $out
     '';
+
+  seerr-notifications =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+              notifications = {
+                discord = {
+                  options = {
+                    webhookUrl._secret = "/run/secrets/discord-webhook";
+                    botUsername = "Seerr";
+                    enableMentions = false;
+                  };
+                };
+                pushover = {
+                  embedPoster = false;
+                  events = [
+                    "mediaAvailable"
+                    "mediaFailed"
+                  ];
+                  options = {
+                    accessToken._secret = "/run/secrets/pushover-token";
+                    userToken = "plain";
+                  };
+                };
+              };
+            };
+          };
+        }
+      ];
+      service = config.config.systemd.services.seerr-notifications;
+    in
+    pkgs.runCommand "unit-test-seerr-notifications" { } ''
+      ${check "runs after seerr-setup" (lib.elem "seerr-setup.service" service.after)}
+      ${check "posts to the discord agent endpoint" (
+        lib.hasInfix "/api/v1/settings/notifications/discord" service.script
+      )}
+      ${check "posts to the pushover agent endpoint" (
+        lib.hasInfix "/api/v1/settings/notifications/pushover" service.script
+      )}
+      ${check "every event except test is on by default" (lib.hasInfix ''"types":8158'' service.script)}
+      ${check "a chosen event list becomes the matching bitmask" (
+        lib.hasInfix ''"types":24'' service.script
+      )}
+      ${check "the webhook secret is read from its file, not serialised" (
+        lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/discord-webhook" service.script
+        && !lib.hasInfix "_secret" service.script
+      )}
+      ${check "plain options pass through" (
+        lib.hasInfix ''"botUsername":"Seerr"'' service.script
+        && lib.hasInfix ''"enableMentions":false'' service.script
+      )}
+      echo 'PASS: seerr-notifications' > $out
+    '';
 }

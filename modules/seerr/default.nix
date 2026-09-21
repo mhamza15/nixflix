@@ -16,6 +16,7 @@ in
   imports = [
     ./jellyfin
     ./librarySyncService.nix
+    ./notifications
     ./options.nix
     ./radarr
     ./setupService.nix
