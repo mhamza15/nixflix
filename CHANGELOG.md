@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Jellyfin's derived libraries now use `lib.mkDefault` per field, so a user `paths` or `typeOptions` replaces the derived list instead of appending to it
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
 - Profilarr now runs as a dedicated `profilarr` user instead of a hardcoded uid 1000, and owns its data directory, so the container entrypoint no longer chowns it away from the declared owner
 - Fix `nixflix.profilarr.timeZone` failing evaluation when `time.timeZone` is unset

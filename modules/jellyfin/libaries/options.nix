@@ -399,7 +399,9 @@ in
       - Music: Created when Lidarr is enabled
       - Anime: Created when either Sonarr anime or Radarr anime is enabled
 
-      Default libraries can be removed with the following: `nixflix.jellyfin.libraries.Movies = lib.mkForce {};`
+      Each derived field is a `lib.mkDefault`, so a user value for `paths` or `typeOptions`
+      replaces the derived one instead of merging with it. Default libraries can be removed
+      with the following: `nixflix.jellyfin.libraries.Movies = lib.mkForce {};`
     '';
     type = types.attrsOf (types.nullOr libraryModule);
     default = { };
@@ -426,10 +428,10 @@ in
 
   config.nixflix.jellyfin.libraries = {
     Shows = mkIf (config.nixflix.sonarr.enable or false) {
-      collectionType = "tvshows";
-      paths = config.nixflix.sonarr.mediaDirs;
+      collectionType = mkDefault "tvshows";
+      paths = mkDefault config.nixflix.sonarr.mediaDirs;
 
-      typeOptions = [
+      typeOptions = mkDefault [
         {
           type = "Series";
           imageFetchers = [
@@ -489,10 +491,10 @@ in
     };
 
     Anime = mkIf (config.nixflix.sonarr-anime.enable or false) {
-      collectionType = "tvshows";
-      paths = config.nixflix.sonarr-anime.mediaDirs;
+      collectionType = mkDefault "tvshows";
+      paths = mkDefault config.nixflix.sonarr-anime.mediaDirs;
 
-      typeOptions = [
+      typeOptions = mkDefault [
         {
           type = "Series";
           imageFetchers = [
@@ -568,10 +570,10 @@ in
     };
 
     Movies = mkIf (config.nixflix.radarr.enable or false) {
-      collectionType = "movies";
-      paths = config.nixflix.radarr.mediaDirs;
+      collectionType = mkDefault "movies";
+      paths = mkDefault config.nixflix.radarr.mediaDirs;
 
-      typeOptions = [
+      typeOptions = mkDefault [
         {
           type = "Movie";
           imageFetchers = [
@@ -599,8 +601,8 @@ in
     };
 
     Music = mkIf (config.nixflix.lidarr.enable or false) {
-      collectionType = "music";
-      paths = config.nixflix.lidarr.mediaDirs;
+      collectionType = mkDefault "music";
+      paths = mkDefault config.nixflix.lidarr.mediaDirs;
     };
   };
 }

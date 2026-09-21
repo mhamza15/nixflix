@@ -1290,4 +1290,62 @@ in
       ];
     in
     assertTest "seerr-force-empty-instances" (config.config.nixflix.seerr.sonarr == { });
+
+  jellyfin-default-library-override =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            jellyfin = {
+              enable = true;
+              apiKey = "test-jellyfin-key";
+              libraries.Movies = {
+                paths = [
+                  "/srv/media/movies"
+                  "/mnt/remote/Movies"
+                ];
+                typeOptions = [
+                  {
+                    type = "Movie";
+                    imageFetchers = [ "TheMovieDb" ];
+                  }
+                ];
+              };
+              libraries.Shows.enableTrickplayImageExtraction = false;
+            };
+            radarr = {
+              enable = true;
+              mediaDirs = [ "/srv/media/movies" ];
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            sonarr = {
+              enable = true;
+              mediaDirs = [ "/srv/media/tv" ];
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+          };
+        }
+      ];
+      inherit (config.config.nixflix.jellyfin) libraries;
+    in
+    pkgs.runCommand "unit-test-jellyfin-default-library-override" { } ''
+      ${check "user paths replace the derived paths instead of merging" (
+        libraries.Movies.paths == [
+          "/srv/media/movies"
+          "/mnt/remote/Movies"
+        ]
+      )}
+      ${check "user typeOptions replace the derived typeOptions" (
+        builtins.length libraries.Movies.typeOptions == 1
+        && (builtins.head libraries.Movies.typeOptions).imageFetchers == [ "TheMovieDb" ]
+      )}
+      ${check "the derived collectionType survives a partial override" (
+        libraries.Movies.collectionType == "movies"
+      )}
+      ${check "a partial override on Shows keeps the derived paths" (
+        libraries.Shows.paths == [ "/srv/media/tv" ] && !libraries.Shows.enableTrickplayImageExtraction
+      )}
+      echo 'PASS: jellyfin-default-library-override' > $out
+    '';
 }
