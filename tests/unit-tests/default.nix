@@ -1398,6 +1398,9 @@ in
       ${check "plain discord fields still pass through" (
         lib.hasInfix ''"onGrab":true'' sonarrScript && lib.hasInfix "--arg username Sonarr" sonarrScript
       )}
+      ${check "extraNotifications entry without dependencies still evaluates" (
+        lib.elem "radarr.service" config.config.systemd.services.radarr-notifications.after
+      )}
       ${check "extraNotifications secret in an arbitrary field is read at runtime" (
         lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/pushover-user" radarrScript
         && !lib.hasInfix ''"userKey":{"_secret"'' radarrScript

@@ -30,7 +30,7 @@ let
   notificationsFor = serviceName: filter (n: elem serviceName n.services) allNotifications;
 
   notificationDependencies =
-    serviceName: unique (concatMap (n: n.dependencies) (notificationsFor serviceName));
+    serviceName: unique (concatMap (n: n.dependencies or [ ]) (notificationsFor serviceName));
 
   mkNotificationsService =
     serviceName:

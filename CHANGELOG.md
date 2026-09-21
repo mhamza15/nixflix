@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- `nixflix.notif.extraNotifications` entries no longer fail evaluation when `dependencies` is omitted
 - `nixflix.notif` now resolves `{ _secret = ...; }` in any notification field at runtime instead of serialising the reference into the unit script
 - Jellyfin's derived libraries now use `lib.mkDefault` per field, so a user `paths` or `typeOptions` replaces the derived list instead of appending to it
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
