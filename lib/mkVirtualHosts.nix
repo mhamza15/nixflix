@@ -149,5 +149,9 @@ in
       networking.hosts = lib.mkIf (
         expose && cfg.reverseProxy.enable && cfg.reverseProxy.addHostsEntries
       ) { "127.0.0.1" = [ hostname ]; };
+
+      nixflix.reverseProxy.virtualHosts.${hostname} = lib.mkIf expose {
+        inherit port upstreamHost websocketUpgrade;
+      };
     };
 }

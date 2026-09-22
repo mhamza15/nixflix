@@ -156,6 +156,37 @@ in
         default = if cfg.reverseProxy.enable && cfg.reverseProxy.forceSSL then "https" else "http";
         description = "The HTTP scheme to use for external URLs.";
       };
+
+      virtualHosts = mkOption {
+        type = types.attrsOf (
+          types.submodule {
+            options = {
+              port = mkOption {
+                type = types.port;
+                description = "Port the service listens on.";
+              };
+
+              upstreamHost = mkOption {
+                type = types.str;
+                default = "127.0.0.1";
+                description = "Address the service listens on.";
+              };
+
+              websocketUpgrade = mkOption {
+                type = types.bool;
+                default = false;
+                description = "Whether the service needs WebSocket upgrades proxied.";
+              };
+            };
+          }
+        );
+        default = { };
+        description = ''
+          Every exposed service, keyed by the hostname nixflix would proxy it under.
+          Filled in by the service modules. Read this to drive a reverse proxy that
+          nixflix does not manage, for example with `externalProxy`.
+        '';
+      };
     };
 
     nginx = {

@@ -1567,4 +1567,42 @@ in
       )}
       echo 'PASS: external-proxy-tls-scheme' > $out
     '';
+  reverse-proxy-virtual-hosts =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            externalProxy = {
+              enable = true;
+              domain = "example.com";
+            };
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            radarr = {
+              enable = true;
+              reverseProxy.expose = false;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+            };
+          };
+        }
+      ];
+      inherit (config.config.nixflix.reverseProxy) virtualHosts;
+    in
+    pkgs.runCommand "unit-test-reverse-proxy-virtual-hosts" { } ''
+      ${check "an exposed service is listed under its hostname" (
+        virtualHosts."sonarr.example.com".port == 8989
+        && virtualHosts."sonarr.example.com".upstreamHost == "127.0.0.1"
+      )}
+      ${check "seerr is listed with its port" (virtualHosts."seerr.example.com".port == 5055)}
+      ${check "a service with expose = false is not listed" (!(virtualHosts ? "radarr.example.com"))}
+      ${check "a disabled service is not listed" (!(virtualHosts ? "prowlarr.example.com"))}
+      echo 'PASS: reverse-proxy-virtual-hosts' > $out
+    '';
 }
