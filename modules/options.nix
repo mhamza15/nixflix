@@ -42,6 +42,19 @@ in
       '';
     };
 
+    mountDependencies = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      example = [ "rclone-media.service" ];
+      description = ''
+        systemd units that provide the storage under `mediaDir` and `downloadsDir`, such
+        as a network or FUSE mount. Services that hold files there open (the Starr
+        services, Jellyfin, Navidrome, qBittorrent, SABnzbd) get `BindsTo` and `After`
+        on these units, so they stop with the storage instead of keeping stale handles
+        and come back when it does. Usually listed in `serviceDependencies` as well.
+      '';
+    };
+
     theme = {
       enable = mkOption {
         type = types.bool;

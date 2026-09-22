@@ -1663,4 +1663,42 @@ in
       ${check "a disabled service is not offered as a connector" (!(connectors ? Sonarr))}
       echo 'PASS: profilarr-derived-connectors' > $out
     '';
+  mount-dependencies-bind-media-services =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            serviceDependencies = [ "media-mount.service" ];
+            mountDependencies = [ "media-mount.service" ];
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            jellyfin = {
+              enable = true;
+              apiKey = "test-jellyfin-key";
+            };
+            usenetClients.sabnzbd = {
+              enable = true;
+              settings.misc = {
+                api_key = "testapikey123456789abcdef";
+                nzb_key = "testnzbkey123456789abcdef";
+              };
+            };
+          };
+        }
+      ];
+      units = config.config.systemd.services;
+      boundTo = unit: lib.elem "media-mount.service" (units.${unit}.bindsTo or [ ]);
+    in
+    pkgs.runCommand "unit-test-mount-dependencies-bind-media-services" { } ''
+      ${check "sonarr is bound to the mount" (boundTo "sonarr")}
+      ${check "jellyfin is bound to the mount" (boundTo "jellyfin")}
+      ${check "sabnzbd is bound to the mount" (boundTo "sabnzbd")}
+      ${check "sonarr still orders after the mount" (lib.elem "media-mount.service" units.sonarr.after)}
+      ${check "a config oneshot is not bound" (!(boundTo "sonarr-config"))}
+      ${check "a disabled service adds no unit" (!(units ? radarr))}
+      echo 'PASS: mount-dependencies-bind-media-services' > $out
+    '';
 }

@@ -18,6 +18,7 @@ in
     ./jellyfin
     ./lidarr
     ./maintainerr
+    ./mountDependencies.nix
     ./navidrome
     ./notif
     ./options.nix

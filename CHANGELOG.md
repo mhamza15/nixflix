@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `nixflix.mountDependencies` to bind the media-holding services to the units that provide their storage
 - `nixflix.reverseProxy.virtualHosts`, the exposed services keyed by hostname, for driving an unmanaged reverse proxy
 - `nixflix.externalProxy.tls` so derived external URLs use `https` behind an unmanaged TLS proxy
 - `nixflix.seerr.notifications` for declarative Seerr notification agents such as Discord and Pushover
