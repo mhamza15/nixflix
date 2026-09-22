@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `nixflix.externalProxy.tls` so derived external URLs use `https` behind an unmanaged TLS proxy
 - `nixflix.seerr.notifications` for declarative Seerr notification agents such as Discord and Pushover
 - `nixflix.profilarr.notifications` for declarative Discord, ntfy, Telegram and webhook notification services
 - `nixflix.notif.discord` for Discord webhook notifications on the Starr services

@@ -1529,4 +1529,42 @@ in
       )}
       echo 'PASS: seerr-notifications' > $out
     '';
+  external-proxy-tls-scheme =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            externalProxy = {
+              enable = true;
+              domain = "example.com";
+              tls = true;
+            };
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            radarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+            };
+          };
+        }
+      ];
+      inherit (config.config.nixflix) reverseProxy seerr;
+    in
+    pkgs.runCommand "unit-test-external-proxy-tls-scheme" { } ''
+      ${check "externalProxy with tls yields the https scheme" (reverseProxy.httpScheme == "https")}
+      ${check "seerr derives an https externalUrl for Sonarr" (
+        seerr.sonarr.Sonarr.externalUrl == "https://sonarr.example.com"
+      )}
+      ${check "seerr derives an https externalUrl for Radarr" (
+        seerr.radarr.Radarr.externalUrl == "https://radarr.example.com"
+      )}
+      echo 'PASS: external-proxy-tls-scheme' > $out
+    '';
 }

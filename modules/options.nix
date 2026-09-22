@@ -82,6 +82,16 @@ in
         example = "example.com";
         description = "Domain the external reverse proxy serves the services on.";
       };
+
+      tls = mkOption {
+        type = types.bool;
+        default = false;
+        example = true;
+        description = ''
+          Whether the external reverse proxy terminates TLS. Sets the scheme of every
+          derived external URL, such as the Starr links Seerr and Profilarr show, to `https`.
+        '';
+      };
     };
 
     reverseProxy = {
@@ -132,6 +142,8 @@ in
             cfg.nginx.forceSSL
           else if cfg.caddy.enable then
             cfg.caddy.tls.enable
+          else if cfg.externalProxy.enable then
+            cfg.externalProxy.tls
           else
             false;
         description = "Whether SSL is forced (derived).";
@@ -141,8 +153,7 @@ in
         type = types.str;
         internal = true;
         readOnly = true;
-        default =
-          if cfg.reverseProxy.enable && (cfg.nginx.forceSSL || cfg.caddy.tls.enable) then "https" else "http";
+        default = if cfg.reverseProxy.enable && cfg.reverseProxy.forceSSL then "https" else "http";
         description = "The HTTP scheme to use for external URLs.";
       };
     };
