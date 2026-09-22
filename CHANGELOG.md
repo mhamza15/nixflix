@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `nixflix.profilarr.notifications` for declarative Discord, ntfy, Telegram and webhook notification services
 - `nixflix.notif.discord` for Discord webhook notifications on the Starr services
 - `nixflix.<arr>.manageMediaDirs` to skip the systemd-tmpfiles rule for media directories that live on a mount which owns them
-- Profilarr service with declarative Dictionarry and TRaSH PCD database syncing
+- Profilarr service with declarative Dictionarry and TRaSH PCD database syncing. `connectors` is keyed by name and derives the local Starr services
 - Notif Service for configuring notification connectors in Starr apps ([#324](https://github.com/kiriwalawren/nixflix/pull/324))
 
 ### Fixed

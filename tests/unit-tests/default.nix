@@ -53,32 +53,29 @@ in
             profilarr = {
               enable = true;
               apiKey = "0123456789abcdef0123456789abcdef";
-              connectors = [
-                {
-                  name = "Radarr";
-                  type = "radarr";
-                  url = "http://127.0.0.1:7878";
-                  apiKey = "radarr-secret";
-                  sync = {
-                    mediaManagement = {
-                      database = "Dictionarry";
-                      naming = "Radarr";
-                      qualityDefinitions = "Radarr";
-                      mediaSettings = "Radarr";
-                    };
-                    delayProfile = {
-                      database = "Dictionarry";
-                      profile = "Radarr";
-                    };
-                    qualityProfiles = [
-                      {
-                        database = "Dictionarry";
-                        profile = "2160p Remux";
-                      }
-                    ];
+              connectors.Radarr = {
+                type = "radarr";
+                url = "http://127.0.0.1:7878";
+                apiKey = "radarr-secret";
+                sync = {
+                  mediaManagement = {
+                    database = "Dictionarry";
+                    naming = "Radarr";
+                    qualityDefinitions = "Radarr";
+                    mediaSettings = "Radarr";
                   };
-                }
-              ];
+                  delayProfile = {
+                    database = "Dictionarry";
+                    profile = "Radarr";
+                  };
+                  qualityProfiles = [
+                    {
+                      database = "Dictionarry";
+                      profile = "2160p Remux";
+                    }
+                  ];
+                };
+              };
             };
           };
         }
@@ -1604,5 +1601,66 @@ in
       ${check "a service with expose = false is not listed" (!(virtualHosts ? "radarr.example.com"))}
       ${check "a disabled service is not listed" (!(virtualHosts ? "prowlarr.example.com"))}
       echo 'PASS: reverse-proxy-virtual-hosts' > $out
+    '';
+  profilarr-derived-connectors =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            externalProxy = {
+              enable = true;
+              domain = "example.com";
+              tls = true;
+            };
+            radarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            sonarr-anime = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-anime-api";
+            };
+            profilarr = {
+              enable = true;
+              apiKey = "0123456789abcdef0123456789abcdef";
+              connectors = {
+                Radarr.sync = null;
+                "Sonarr Anime".libraryRefreshInterval = 30;
+                Remote = {
+                  type = "sonarr";
+                  url = "http://sonarr.remote:8989";
+                  apiKey = "remote-secret";
+                };
+              };
+            };
+          };
+        }
+      ];
+      inherit (config.config.nixflix.profilarr) connectors;
+      script = config.config.systemd.services.profilarr-connectors.script;
+    in
+    pkgs.runCommand "unit-test-profilarr-derived-connectors" { } ''
+      ${check "Radarr derives type, url and apiKey from nixflix.radarr" (
+        connectors.Radarr.type == "radarr"
+        && connectors.Radarr.url == "http://127.0.0.1:7878"
+        && connectors.Radarr.apiKey._secret == "/run/secrets/radarr-api"
+      )}
+      ${check "Radarr derives an https externalUrl from the external proxy" (
+        connectors.Radarr.externalUrl == "https://radarr.example.com"
+      )}
+      ${check "Sonarr Anime derives from nixflix.sonarr-anime and keeps the user field" (
+        connectors."Sonarr Anime".type == "sonarr"
+        && connectors."Sonarr Anime".url == "http://127.0.0.1:8990"
+        && connectors."Sonarr Anime".libraryRefreshInterval == 30
+      )}
+      ${check "the attribute name becomes the connector name" (
+        connectors."Sonarr Anime".name == "Sonarr Anime" && lib.hasInfix "'Sonarr Anime'" script
+      )}
+      ${check "a connector with an unknown name takes the user values" (
+        connectors.Remote.url == "http://sonarr.remote:8989" && connectors.Remote.externalUrl == null
+      )}
+      ${check "a disabled service is not offered as a connector" (!(connectors ? Sonarr))}
+      echo 'PASS: profilarr-derived-connectors' > $out
     '';
 }

@@ -203,96 +203,148 @@ let
     };
   };
 
-  connectorType = types.submodule {
-    options = {
-      name = mkOption {
-        type = types.str;
-        description = "Display name and stable Nix ownership key for the Arr connector.";
-      };
-
-      type = mkOption {
-        type = types.enum [
-          "radarr"
-          "sonarr"
-        ];
-        description = "The Arr application type.";
-      };
-
-      url = mkOption {
-        type = types.str;
-        description = "Internal URL Profilarr uses for API calls.";
-      };
-
-      externalUrl = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        description = "Optional browser-facing URL used by Profilarr UI links.";
-      };
-
-      apiKey = secrets.mkSecretOption {
-        description = "API key Profilarr uses to access this Arr instance.";
-      };
-
-      libraryRefreshInterval = mkOption {
-        type = types.ints.unsigned;
-        default = 0;
-        description = "Minutes between library refreshes; zero disables automatic refreshes.";
-      };
-
-      sync = mkOption {
-        type = types.nullOr (
-          types.submodule {
-            options = {
-              trigger = mkOption {
-                type = types.enum [
-                  "manual"
-                  "on_pull"
-                ];
-                default = "on_pull";
-              };
-              mediaManagement = mkOption {
-                type = types.nullOr (
-                  types.submodule {
-                    options = {
-                      database = mkOption { type = types.str; };
-                      naming = mkOption { type = types.str; };
-                      qualityDefinitions = mkOption { type = types.str; };
-                      mediaSettings = mkOption { type = types.str; };
-                    };
-                  }
-                );
-                default = null;
-              };
-              delayProfile = mkOption {
-                type = types.nullOr (
-                  types.submodule {
-                    options = {
-                      database = mkOption { type = types.str; };
-                      profile = mkOption { type = types.str; };
-                    };
-                  }
-                );
-                default = null;
-              };
-              qualityProfiles = mkOption {
-                type = types.listOf (
-                  types.submodule {
-                    options = {
-                      database = mkOption { type = types.str; };
-                      profile = mkOption { type = types.str; };
-                    };
-                  }
-                );
-                default = [ ];
-              };
-            };
-          }
-        );
-        default = null;
-        description = "Declarative sync selections for this Arr connector.";
-      };
+  # Starr services nixflix runs itself, keyed by the connector name that
+  # picks them up. A connector with one of these names and an enabled service
+  # behind it needs nothing but its sync selections.
+  localArrs = {
+    Radarr = {
+      type = "radarr";
+      service = config.nixflix.radarr;
+    };
+    Sonarr = {
+      type = "sonarr";
+      service = config.nixflix.sonarr;
+    };
+    "Sonarr Anime" = {
+      type = "sonarr";
+      service = config.nixflix.sonarr-anime;
     };
   };
+
+  localArrFor =
+    name: if localArrs ? ${name} && localArrs.${name}.service.enable then localArrs.${name} else null;
+
+  localArrUrl =
+    service:
+    "http://${service.connectionAddress}:${toString service.config.hostConfig.port}${service.config.hostConfig.urlBase}";
+
+  localArrExternalUrl =
+    service:
+    if config.nixflix.reverseProxy.enable then
+      "${config.nixflix.reverseProxy.httpScheme}://${service.subdomain}.${config.nixflix.reverseProxy.domain}${service.config.hostConfig.urlBase}"
+    else
+      null;
+
+  connectorType = types.submodule (
+    { name, ... }:
+    let
+      local = localArrFor name;
+    in
+    {
+      options = {
+        name = mkOption {
+          type = types.str;
+          default = name;
+          description = "Display name and stable Nix ownership key for the Arr connector.";
+        };
+
+        type =
+          mkOption {
+            type = types.enum [
+              "radarr"
+              "sonarr"
+            ];
+            description = "The Arr application type. Derived for `Radarr`, `Sonarr` and `Sonarr Anime` when that nixflix service is enabled.";
+          }
+          // optionalAttrs (local != null) { default = local.type; };
+
+        url =
+          mkOption {
+            type = types.str;
+            description = "Internal URL Profilarr uses for API calls. Derived for the local Starr services.";
+          }
+          // optionalAttrs (local != null) {
+            default = localArrUrl local.service;
+            defaultText = literalExpression "the local service's connection address, port and URL base";
+          };
+
+        externalUrl = mkOption {
+          type = types.nullOr types.str;
+          default = if local != null then localArrExternalUrl local.service else null;
+          defaultText = literalExpression "the local service's reverse proxy URL, or null";
+          description = "Optional browser-facing URL used by Profilarr UI links.";
+        };
+
+        apiKey =
+          secrets.mkSecretOption {
+            description = "API key Profilarr uses to access this Arr instance. Derived for the local Starr services.";
+          }
+          // optionalAttrs (local != null) {
+            default = local.service.config.apiKey;
+            defaultText = literalExpression "the local service's API key";
+          };
+
+        libraryRefreshInterval = mkOption {
+          type = types.ints.unsigned;
+          default = 0;
+          description = "Minutes between library refreshes; zero disables automatic refreshes.";
+        };
+
+        sync = mkOption {
+          type = types.nullOr (
+            types.submodule {
+              options = {
+                trigger = mkOption {
+                  type = types.enum [
+                    "manual"
+                    "on_pull"
+                  ];
+                  default = "on_pull";
+                };
+                mediaManagement = mkOption {
+                  type = types.nullOr (
+                    types.submodule {
+                      options = {
+                        database = mkOption { type = types.str; };
+                        naming = mkOption { type = types.str; };
+                        qualityDefinitions = mkOption { type = types.str; };
+                        mediaSettings = mkOption { type = types.str; };
+                      };
+                    }
+                  );
+                  default = null;
+                };
+                delayProfile = mkOption {
+                  type = types.nullOr (
+                    types.submodule {
+                      options = {
+                        database = mkOption { type = types.str; };
+                        profile = mkOption { type = types.str; };
+                      };
+                    }
+                  );
+                  default = null;
+                };
+                qualityProfiles = mkOption {
+                  type = types.listOf (
+                    types.submodule {
+                      options = {
+                        database = mkOption { type = types.str; };
+                        profile = mkOption { type = types.str; };
+                      };
+                    }
+                  );
+                  default = [ ];
+                };
+              };
+            }
+          );
+          default = null;
+          description = "Declarative sync selections for this Arr connector.";
+        };
+      };
+    }
+  );
 
   mkConnectorScript = connector: ''
     NAME=${escapeShellArg connector.name}
@@ -537,10 +589,25 @@ in
     };
 
     connectors = mkOption {
-      type = types.listOf connectorType;
-      default = [ ];
+      type = types.attrsOf connectorType;
+      default = { };
+      example = literalExpression ''
+        {
+          Radarr.sync = {
+            qualityProfiles = [ { database = "Dictionarry"; profile = "2160p Remux"; } ];
+          };
+          Remote = {
+            type = "sonarr";
+            url = "http://sonarr.remote:8989";
+            apiKey._secret = "/run/secrets/remote-sonarr-api";
+          };
+        }
+      '';
       description = ''
-        Arr instances managed by Nix. Existing connectors with matching names are updated;
+        Arr instances managed by Nix, keyed by connector name. For `Radarr`, `Sonarr`
+        and `Sonarr Anime` the type, URL, API key and external URL derive from the
+        nixflix service of that name when it is enabled, so only the sync selections
+        need declaring. Existing connectors with matching names are updated;
         connectors created outside Nix are left untouched.
       '';
     };
@@ -657,7 +724,7 @@ in
         '';
       };
 
-      systemd.services.profilarr-connectors = mkIf (cfg.connectors != [ ]) {
+      systemd.services.profilarr-connectors = mkIf (cfg.connectors != { }) {
         description = "Configure Profilarr Arr connectors";
         after = [
           "${containerService}.service"
@@ -683,7 +750,7 @@ in
           systemctl stop ${escapeShellArg "${containerService}.service"}
           trap 'systemctl start ${escapeShellArg "${containerService}.service"}' EXIT
 
-          ${concatMapStringsSep "\n" mkConnectorScript cfg.connectors}
+          ${concatMapStringsSep "\n" mkConnectorScript (attrValues cfg.connectors)}
         '';
       };
 
