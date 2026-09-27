@@ -414,6 +414,47 @@ in
       echo 'PASS: jellyfin-plugin-package-service-generation' > $out
     '';
 
+  # Sonarr Anime pulls in the AniDB plugin, which anime libraries fetch metadata from.
+  jellyfin-anidb-with-sonarr-anime =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+
+            jellyfin = {
+              enable = true;
+              users.admin = {
+                password = "testpassword";
+                policy.isAdministrator = true;
+              };
+            };
+
+            sonarr-anime = {
+              enable = true;
+              user = "testuser";
+              config = {
+                hostConfig = {
+                  port = 8990;
+                  username = "admin";
+                  password._secret = "/run/secrets/sonarr-pass";
+                };
+                apiKey._secret = "/run/secrets/sonarr-api";
+                rootFolders = [ { path = "/media/anime"; } ];
+              };
+            };
+          };
+        }
+      ];
+      anidb = config.config.nixflix.jellyfin.plugins.AniDB;
+    in
+    pkgs.runCommand "unit-test-jellyfin-anidb-with-sonarr-anime" { } ''
+      ${check "AniDB is enabled" anidb.enable}
+      ${check "AniDB has a package" (anidb.package != null)}
+
+      echo 'PASS: jellyfin-anidb-with-sonarr-anime' > $out
+    '';
+
   jellyfin-plugin-source-assertion =
     let
       result = builtins.tryEval (

@@ -37,7 +37,9 @@ in
     warnings = pluginResolution.resolutionWarnings;
 
     nixflix.jellyfin = {
+      # Built-in plugins start disabled, so turn AniDB on for anime libraries.
       plugins.AniDB = mkIf config.nixflix.sonarr-anime.enable {
+        enable = mkDefault true;
         config = {
           TitlePreference = mkDefault "Localized";
           OriginalTitlePreference = mkDefault "JapaneseRomaji";
