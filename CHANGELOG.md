@@ -22,7 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `nixflix.notif.discord` for Discord webhook notifications on the Starr services
 - `nixflix.<arr>.manageMediaDirs` to skip the systemd-tmpfiles rule for media directories that live on a mount which owns them
 - Profilarr service with declarative Dictionarry and TRaSH PCD database syncing. `connectors` is keyed by name and derives the local Starr services
+- Allow VPN namespace to be overriden per service ([#336](https://github.com/kiriwalawren/nixflix/pull/336))
+- Soulseek downloader - slskd ([#336](https://github.com/kiriwalawren/nixflix/pull/336))
 - Notif Service for configuring notification connectors in Starr apps ([#324](https://github.com/kiriwalawren/nixflix/pull/324))
+- `nixflix.prowlarr.config.indexers.*.schemaName` to set a custom indexer display name and configure multiple indexers from the same schema ([#353](https://github.com/kiriwalawren/nixflix/issues/353))
+- Automatically set default package for most Jellyfin plugins, also removing the Universal Plugin
+  Repository from the system configuration. ([#339](https://github.com/kiriwalawren/nixflix/pull/339)).
+  If you previously enabled a plugin just by setting a package, you'll now want to just set `enable = true;` instead.
 
 ### Fixed
 
@@ -32,8 +38,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
 - Profilarr now runs as a dedicated `profilarr` user instead of a hardcoded uid 1000, and owns its data directory, so the container entrypoint no longer chowns it away from the declared owner
 - Fix `nixflix.profilarr.timeZone` failing evaluation when `time.timeZone` is unset
+- Fix `radarr-config` failing to apply host settings on Radarr 6.4.4 by sending `allowedHosts` in the host config payload ([#355](https://github.com/kiriwalawren/nixflix/issues/355))
 - Fix redundant group configuration causing mediaUsers failure ([#341](https://github.com/kiriwalawren/nixflix/pull/341))
 - Fix jellyfin auto ignore empty folders ([#333](https://github.com/kiriwalawren/nixflix/pull/333))
+- Added missing websocket support to arrs nginx config ([#354](https://github.com/kiriwalawren/nixflix/pull/354))
+- Resolve `_secret` references in additional Prowlarr indexer fields instead of sending them unresolved ([#353](https://github.com/kiriwalawren/nixflix/issues/353))
 
 ## [3.1.0] - 2026-09-04
 

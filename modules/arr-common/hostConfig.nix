@@ -24,7 +24,7 @@ in
           type = types.str;
           default =
             if config.nixflix.vpn.enable && cfg.vpn.enable then
-              config.vpnNamespaces.wg.namespaceAddress
+              config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
             else if config.nixflix.reverseProxy.enable then
               "127.0.0.1"
             else
@@ -326,6 +326,7 @@ in
             NEW_CONFIG=$(${pkgs.jq}/bin/jq -n \
               ${jqSecrets.flagsString} \
               --argjson id "$CONFIG_ID" \
+              --arg allowedHosts "$(echo "$HOST_CONFIG" | ${pkgs.jq}/bin/jq -r '.allowedHosts // ""')" \
               --arg bindAddress ${escapeShellArg hc.bindAddress} \
               --arg authenticationMethod ${escapeShellArg hc.authenticationMethod} \
               --arg authenticationRequired ${escapeShellArg hc.authenticationRequired} \
@@ -345,6 +346,7 @@ in
               --arg backupFolder ${escapeShellArg hc.backupFolder} \
               '{
                 id: $id,
+                allowedHosts: $allowedHosts,
                 bindAddress: $bindAddress,
                 port: ${builtins.toString hc.port},
                 sslPort: ${builtins.toString hc.sslPort},

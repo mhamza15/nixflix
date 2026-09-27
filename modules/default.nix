@@ -28,6 +28,7 @@ in
     ./radarr.nix
     ./recyclarr
     ./seerr
+    ./slskd
     ./sonarr-anime.nix
     ./sonarr.nix
     ./torrentClients

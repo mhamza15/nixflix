@@ -14,66 +14,86 @@ in
 {
   options.nixflix.prowlarr.config.indexers = mkOption {
     type = types.listOf (
-      types.submodule {
-        freeformType = types.attrsOf types.anything;
-        options = {
-          name = mkOption {
-            type = types.str;
-            description = "Name of the Prowlarr Indexer Schema";
-          };
-          apiKey = secrets.mkSecretOption {
-            description = "API key for the indexer. Applied to schema fields named `apikey` or `apiKey`.";
-            nullable = true;
-          };
-          apikey = secrets.mkSecretOption {
-            description = "API key for the indexer (lowercase variant). Applied to schema fields named `apikey` or `apiKey`.";
-            nullable = true;
-          };
-          username = secrets.mkSecretOption {
-            description = "Username for the indexer.";
-            nullable = true;
-          };
-          password = secrets.mkSecretOption {
-            description = "Password for the indexer.";
-            nullable = true;
-          };
-          passkey = secrets.mkSecretOption {
-            description = "Passkey for the indexer.";
-            nullable = true;
-          };
-          enable = mkOption {
-            type = types.bool;
-            default = true;
-            description = ''
-              Whether the indexer is enabled.
+      types.submodule (
+        { config, ... }:
+        {
+          freeformType = types.attrsOf types.anything;
+          options = {
+            name = mkOption {
+              type = types.str;
+              description = ''
+                Display name of the indexer in Prowlarr. Must be unique across all configured indexers.
 
-              A handful of indexer schemas ship disabled, so without this they would be
-              created in a disabled state.
-            '';
-          };
-          appProfileId = mkOption {
-            type = types.int;
-            default = 1;
-            description = "Application profile ID for the indexer (default: 1).";
-          };
-          tags = mkOption {
-            type = types.listOf types.str;
-            default = [ ];
-            description = ''
-              Use tags to specify Indexer Proxies or which apps the indexer is synced to.
+                Also used as the name of the Prowlarr Indexer Schema when `schemaName` is not set.
+              '';
+            };
+            schemaName = mkOption {
+              type = types.str;
+              default = config.name;
+              defaultText = literalExpression "name";
+              example = "Generic Torznab";
+              description = ''
+                Name of the Prowlarr Indexer Schema to create the indexer from.
 
-              Tags should be used with caution, they can have unintended effects. An indexer with a tag will only sync to apps with the same tag.
-            '';
+                Set this to give the indexer a custom display name, or to configure multiple indexers
+                from the same schema (e.g. several `Generic Torznab` indexers).
+              '';
+            };
+            apiKey = secrets.mkSecretOption {
+              description = "API key for the indexer. Applied to schema fields named `apikey` or `apiKey`.";
+              nullable = true;
+            };
+            apikey = secrets.mkSecretOption {
+              description = "API key for the indexer (lowercase variant). Applied to schema fields named `apikey` or `apiKey`.";
+              nullable = true;
+            };
+            username = secrets.mkSecretOption {
+              description = "Username for the indexer.";
+              nullable = true;
+            };
+            password = secrets.mkSecretOption {
+              description = "Password for the indexer.";
+              nullable = true;
+            };
+            passkey = secrets.mkSecretOption {
+              description = "Passkey for the indexer.";
+              nullable = true;
+            };
+            enable = mkOption {
+              type = types.bool;
+              default = true;
+              description = ''
+                Whether the indexer is enabled.
+
+                A handful of indexer schemas ship disabled, so without this they would be
+                created in a disabled state.
+              '';
+            };
+            appProfileId = mkOption {
+              type = types.int;
+              default = 1;
+              description = "Application profile ID for the indexer (default: 1).";
+            };
+            tags = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              description = ''
+                Use tags to specify Indexer Proxies or which apps the indexer is synced to.
+
+                Tags should be used with caution, they can have unintended effects. An indexer with a tag will only sync to apps with the same tag.
+              '';
+            };
           };
-        };
-      }
+        }
+      )
     );
     default = [ ];
     description = ''
       List of indexers to configure in Prowlarr. Prowlarr supports many indexers in addition to any indexer that uses the Newznab/Torznab standard using 'Generic Newznab' (for usenet) or 'Generic Torznab' (for torrents).
 
-      Any additional attributes beyond `name`, `apiKey`, `apikey`, `username`, `password`, `passkey`, and `appProfileId`
-      will be applied as field values to the indexer schema.
+      Any additional attributes beyond `name`, `schemaName`, `apiKey`, `apikey`, `username`, `password`, `passkey`,
+      `enable`, `appProfileId`, and `tags` will be applied as field values to the indexer schema. These values can also be
+      `{ _secret = /path/to/file; }` for file-based secrets.
 
       The `apiKey` or `apikey` value is automatically applied to whichever field name the indexer schema
       uses — some schemas use `apiKey` (camelCase) and others use `apikey` (all-lowercase).
@@ -85,6 +105,19 @@ in
       ```
     '';
   };
+
+  config.assertions = mkIf (config.nixflix.enable && cfg.enable) [
+    (
+      let
+        names = map (indexer: toLower indexer.name) cfg.config.indexers;
+        duplicateNames = unique (filter (name: count (n: n == name) names > 1) names);
+      in
+      {
+        assertion = duplicateNames == [ ];
+        message = "nixflix.prowlarr.config.indexers: indexer names must be unique (case-insensitive), found duplicates: ${concatStringsSep ", " duplicateNames}. Use `schemaName` to configure multiple indexers from the same schema.";
+      }
+    )
+  ];
 
   config.systemd.services."prowlarr-indexers" =
     mkIf (config.nixflix.enable && cfg.enable && cfg.config.apiKey != null)
@@ -173,42 +206,24 @@ in
             indexerConfig:
             let
               indexerName = indexerConfig.name;
-              inherit (indexerConfig)
-                apiKey
-                apikey
-                username
-                password
-                passkey
-                ;
+              inherit (indexerConfig) schemaName;
+              # Schemas name this field either `apiKey` or `apikey`; set both so whichever exists gets the value.
+              apiKey = if indexerConfig.apiKey != null then indexerConfig.apiKey else indexerConfig.apikey;
               allOverrides = builtins.removeAttrs indexerConfig [
                 "name"
+                "schemaName"
                 "apiKey"
                 "apikey"
-                "username"
-                "password"
-                "passkey"
                 "tags"
               ];
-              fieldOverrides = lib.filterAttrs (
-                name: value: value != null && !lib.hasPrefix "_" name
-              ) allOverrides;
+              fieldOverrides =
+                lib.filterAttrs (name: value: value != null && !lib.hasPrefix "_" name) allOverrides
+                // lib.optionalAttrs (apiKey != null) {
+                  inherit apiKey;
+                  apikey = apiKey;
+                };
               fieldOverridesJson = builtins.toJSON (secrets.stripSecretRefs fieldOverrides);
-
-              nestedSecrets = secrets.mkNestedJqSecretArgs fieldOverrides;
-
-              overridesExpr =
-                if nestedSecrets.assignments == [ ] then
-                  "$overrides"
-                else
-                  "($overrides | ${lib.concatStringsSep " | " nestedSecrets.assignments})";
-
-              jqSecrets = secrets.mkJqSecretArgs {
-                apiKey = if apiKey == null then "" else apiKey;
-                apikey = if apikey == null then "" else apikey;
-                username = if username == null then "" else username;
-                password = if password == null then "" else password;
-                passkey = if passkey == null then "" else passkey;
-              };
+              jqSecrets = secrets.mkNestedJqSecretArgs fieldOverrides;
             in
             ''
               (
@@ -221,26 +236,13 @@ in
 
                 echo "$indexer_json" | ${pkgs.jq}/bin/jq \
                   ${jqSecrets.flagsString} \
-                  ${nestedSecrets.flagsString} \
                   --argjson overrides "$overrides" '
-                    ${overridesExpr} as $ov
-                    | .fields[] |= (
-                      if (.name == "apiKey" or .name == "apikey") then
-                        if ${jqSecrets.refs.apiKey} != "" then .value = ${jqSecrets.refs.apiKey}
-                        elif ${jqSecrets.refs.apikey} != "" then .value = ${jqSecrets.refs.apikey}
-                        else .
-                        end
-                      elif .name == "username" and ${jqSecrets.refs.username} != "" then .value = ${jqSecrets.refs.username}
-                      elif .name == "password" and ${jqSecrets.refs.password} != "" then .value = ${jqSecrets.refs.password}
-                      elif .name == "passkey" and ${jqSecrets.refs.passkey} != "" then .value = ${jqSecrets.refs.passkey}
-                      else .
-                      end
-                    )
-                    | . + $ov
+                    ${optionalString jqSecrets.hasSecrets "($overrides | ${concatStringsSep " | " jqSecrets.assignments}) as $overrides |"}
+                    . + $overrides
                     | .fields[] |= (
                         . as $field |
-                        if $ov[$field.name] != null then
-                          .value = $ov[$field.name]
+                        if $overrides[$field.name] != null then
+                          .value = $overrides[$field.name]
                         else
                           .
                         end
@@ -285,16 +287,16 @@ in
               else
                 echo "Indexer ${indexerName} does not exist, creating..."
 
-                SCHEMA=$(echo "$SCHEMAS" | ${pkgs.jq}/bin/jq -r --arg name ${escapeShellArg indexerName} '.[] | select(.name == $name) | @json' || echo "")
+                SCHEMA=$(echo "$SCHEMAS" | ${pkgs.jq}/bin/jq -r --arg name ${escapeShellArg schemaName} '.[] | select(.name == $name) | @json' || echo "")
 
                 if [ -z "$SCHEMA" ]; then
-                  echo "Error: No schema found for indexer ${indexerName}"
+                  echo "Error: No schema found for indexer ${indexerName} (schema: ${schemaName})"
                   exit 1
                 fi
 
                 NEW_INDEXER=$(apply_field_overrides "$SCHEMA" "$FIELD_OVERRIDES")
-                NEW_INDEXER=$(echo "$NEW_INDEXER" | ${pkgs.jq}/bin/jq '
-                  (.indexerUrls[0] // null) as $firstUrl |
+                NEW_INDEXER=$(echo "$NEW_INDEXER" | ${pkgs.jq}/bin/jq --arg name ${escapeShellArg indexerName} '.name = $name
+                  | (.indexerUrls[0] // null) as $firstUrl |
                   if $firstUrl != null then
                     .fields[] |= (
                       if .name == "baseUrl" and (.value == null or .value == "") then
