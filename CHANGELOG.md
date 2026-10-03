@@ -38,6 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
 - Profilarr now runs as a dedicated `profilarr` user instead of a hardcoded uid 1000, and owns its data directory, so the container entrypoint no longer chowns it away from the declared owner
 - Fix `nixflix.profilarr.timeZone` failing evaluation when `time.timeZone` is unset
+- Fix Starr apps failing to hardlink downloads into media directories by removing leftover per-directory `ReadWritePaths` bind mounts and setting qBittorrent's `UMask` to `0002` ([#347](https://github.com/kiriwalawren/nixflix/issues/347)).
+  Torrents downloaded before this fix keep mode `0644`. To make them hardlinkable, run `sudo chmod -R g+w /data/downloads/torrent` once (adjust the path if you changed `nixflix.torrentClients.qbittorrent.downloadsDir`).
 - Fix `radarr-config` failing to apply host settings on Radarr 6.4.4 by sending `allowedHosts` in the host config payload ([#355](https://github.com/kiriwalawren/nixflix/issues/355))
 - Fix redundant group configuration causing mediaUsers failure ([#341](https://github.com/kiriwalawren/nixflix/pull/341))
 - Fix jellyfin auto ignore empty folders ([#333](https://github.com/kiriwalawren/nixflix/pull/333))

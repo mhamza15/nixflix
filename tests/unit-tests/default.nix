@@ -551,6 +551,21 @@ in
 
   jellyfin-plugin-repo-relaxed-version-check =
     let
+      manifest = pkgs.writeText "jellyfin-plugin-relaxed-version-check.json" (
+        builtins.toJSON [
+          {
+            guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
+            name = "LAPSE";
+            versions = [
+              {
+                version = "2.0.1.0";
+                targetAbi = "10.11.0.0";
+                sourceUrl = "https://github.com/Schwponaco-org/lapse-jellyfin-plugin/releases/download/v2.0.1/lapse-jellyfin-plugin-v2.0.1.zip";
+              }
+            ];
+          }
+        ]
+      );
       config = evalConfig [
         {
           nixflix = {
@@ -560,8 +575,8 @@ in
               enable = true;
               system.pluginRepositories = lib.mkForce {
                 "LAPSE Repo" = {
-                  url = "https://raw.githubusercontent.com/Schwponaco-org/lapse-jellyfin-plugin/refs/heads/main/manifest.json";
-                  hash = "sha256:1fwgrxizfrjpffdn56lr7rz180mkkmsbqgmz8z845wrb2wdg7pl4";
+                  url = builtins.unsafeDiscardStringContext "file://${manifest}";
+                  hash = manifestHash manifest;
                   enabled = true;
                 };
               };
@@ -1311,9 +1326,6 @@ in
     pkgs.runCommand "unit-test-arr-unmanaged-media-dirs" { } ''
       ${check "unmanaged sonarr has no tmpfiles rule for its media dir" (
         !(tmpfiles ? "10-sonarr" && tmpfiles."10-sonarr" ? "/mnt/remote/tv")
-      )}
-      ${check "unmanaged sonarr still gets ReadWritePaths" (
-        lib.any (lib.hasInfix "/mnt/remote/tv") sonarrUnit.ReadWritePaths
       )}
       ${check "unmanaged sonarr still joins the media group" (
         lib.elem "media" sonarrUnit.SupplementaryGroups

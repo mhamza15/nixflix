@@ -9,7 +9,6 @@ with lib;
 let
   cfg = config.nixflix.${serviceName};
   inherit (import ./utils.nix { inherit lib pkgs serviceName; }) usesMediaDirs;
-  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
   inherit (config.nixflix) globals;
 in
 {
@@ -29,7 +28,6 @@ in
         systemd-tmpfiles. Disable this when the directories live on a
         filesystem that owns them itself, such as a network or FUSE mount
         where a chown fails and takes the whole tmpfiles run down with it.
-        The service still gets read-write access to the directories.
       '';
     };
   };
@@ -46,9 +44,6 @@ in
       )
     );
 
-    systemd.services.${serviceName}.serviceConfig = {
-      SupplementaryGroups = [ globals.libraryOwner.group ];
-      ReadWritePaths = quotePaths (cfg.mediaDirs ++ [ config.nixflix.downloadsDir ]);
-    };
+    systemd.services.${serviceName}.serviceConfig.SupplementaryGroups = [ globals.libraryOwner.group ];
   };
 }

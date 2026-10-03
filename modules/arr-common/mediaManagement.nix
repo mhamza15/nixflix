@@ -16,7 +16,6 @@ let
     isLidarr
     mkSecureCurl
     ;
-  inherit (import ../../lib/unit-paths.nix { inherit lib; }) quotePaths;
 
   fileDateValues =
     if isSonarr then
@@ -226,10 +225,6 @@ in
         inherit (cfg) user group;
         mode = "0755";
       };
-
-      systemd.services.${serviceName}.serviceConfig.ReadWritePaths = quotePaths [
-        cfg.config.mediaManagement.recycleBin
-      ];
     })
 
     (mkIf (cfg.config.apiKey != null) {
