@@ -27,6 +27,7 @@ in
     ./cleanup-profiles.nix
     ./config-option.nix
     ./radarr.nix
+    ./settings.nix
     ./sonarr-anime.nix
     ./sonarr.nix
   ];

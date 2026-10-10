@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `nixflix.recyclarr.settings` for Recyclarr's `settings.yml`, and `nixflix.recyclarr.customFormats` for custom formats outside the TRaSH Guides
 - `nixflix.mountDependencies` to bind the media-holding services to the units that provide their storage
 - `nixflix.reverseProxy.virtualHosts`, the exposed services keyed by hostname, for driving an unmanaged reverse proxy
 - `nixflix.externalProxy.tls` so derived external URLs use `https` behind an unmanaged TLS proxy
