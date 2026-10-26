@@ -92,7 +92,12 @@ let
       defaultText = literalExpression "config.nixflix.jellyfin.enable";
     };
 
-    dependencies.default = [ "jellyfin-api-key.service" ];
+    # Wait for jellyfin-plugins too. It stops and restarts Jellyfin when the
+    # plugins change, and the Starr services test the connection on save.
+    dependencies.default = [
+      "jellyfin-api-key.service"
+      "jellyfin-plugins.service"
+    ];
 
     services = {
       default = optionals config.nixflix.jellyfin.enable (

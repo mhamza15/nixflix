@@ -929,6 +929,9 @@ in
       ${check "lidarr-notifications is configured for Subsonic" (
         lib.hasInfix "Subsonic" lidarrNotifications.script
       )}
+      ${check "sonarr-notifications waits for jellyfin-plugins, which restarts Jellyfin" (
+        lib.elem "jellyfin-plugins.service" sonarrNotifications.after
+      )}
       echo 'PASS: notif-service-scoping' > $out
     '';
 
