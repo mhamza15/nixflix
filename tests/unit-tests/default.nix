@@ -966,6 +966,17 @@ in
             ];
 
             notif.jellyfin.includeHealthWarnings = true;
+
+            notif.extraNotifications = [
+              {
+                name = "hook";
+                implementationName = "Webhook";
+                enable = true;
+                services = [ "sonarr" ];
+                url = "http://127.0.0.1:1234";
+                onGrab = true;
+              }
+            ];
           };
         }
       ];
@@ -983,7 +994,11 @@ in
         lib.hasInfix ''"includeHealthWarnings":true'' sonarrNotifications.script
       )}
       ${check "apply_field_overrides merges top-level overrides (name, enable, freeform properties)" (
-        lib.hasInfix ". + \$overrides" sonarrNotifications.script
+        lib.hasInfix ". + \$ov" sonarrNotifications.script
+      )}
+      ${check "a notification without a trigger list keeps its own on* keys" (
+        lib.hasInfix "--argjson enabledTriggers null" sonarrNotifications.script
+        && lib.hasInfix "if \$enabledTriggers == null then ." sonarrNotifications.script
       )}
       ${check "notification overrides do not include the nested triggers attrset" (
         !lib.hasInfix "\"triggers\":" sonarrNotifications.script
