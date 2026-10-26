@@ -10,13 +10,7 @@ let
   inherit (config) nixflix;
   cfg = nixflix.seerr;
 
-  authUtil = import ../authUtil.nix {
-    inherit
-      lib
-      pkgs
-      cfg
-      ;
-  };
+  authUtil = import ../authUtil.nix { inherit lib pkgs cfg; };
   baseUrl = "http://${cfg.connectionAddress}:${toString cfg.port}";
 
   # Notification agents Seerr exposes under /api/v1/settings/notifications.

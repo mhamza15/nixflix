@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
@@ -268,13 +264,9 @@ let
     };
 
     extraOptions = {
-      username = secrets.mkSecretOption {
-        description = "Username key for the download client.";
-      };
+      username = secrets.mkSecretOption { description = "Username key for the download client."; };
 
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 
@@ -291,13 +283,9 @@ let
     };
 
     extraOptions = {
-      username = secrets.mkSecretOption {
-        description = "Username key for the download client.";
-      };
+      username = secrets.mkSecretOption { description = "Username key for the download client."; };
 
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 
@@ -315,9 +303,7 @@ let
     };
 
     extraOptions = {
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 

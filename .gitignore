@@ -1,9 +1,11 @@
 /result
 .direnv/
 .envrc
+__pycache__/
 
 docs/reference/*/
 !docs/reference/index.md
 mkdocs.yml
 
 .nixos-test-history
+modules/jellyfin/plugins/.source-cache/

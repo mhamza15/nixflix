@@ -5,388 +5,422 @@
 }:
 let
   jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit (pkgs) lib; };
+
+  manifestHash =
+    file:
+    builtins.convertHash {
+      hash = builtins.hashFile "sha256" file;
+      hashAlgo = "sha256";
+      toHashFormat = "sri";
+    };
+
+  lapseManifest = pkgs.writeText "lapse-manifest.json" (
+    builtins.toJSON [
+      {
+        guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
+        name = "LAPSE";
+        overview = "Sync subtitles that have drifted out of time. Open Settings after installing to set it up.";
+        description = "Lines up subtitles against a film or episode's audio, or against another subtitle file, using the LAPSE alignment engine.";
+        owner = "rs-jensen";
+        category = "General";
+        imageUrl = "https://raw.githubusercontent.com/rs-jensen/lapse-jellyfin-plugin/v2.1.1/Jellyfin.Plugin.Lapse/Configuration/LAPSE.png";
+        versions = [
+          {
+            version = "2.1.2.0";
+            changelog = "See the release notes on GitHub.";
+            targetAbi = "10.11.0.0";
+            sourceUrl = "https://github.com/rs-jensen/lapse-jellyfin-plugin/releases/download/v2.1.2/lapse-jellyfin-plugin-v2.1.2.zip";
+            checksum = "cf0633dab1acaf6e053862f3c2c47706";
+            timestamp = "2026-10-17T10:18:11Z";
+          }
+        ];
+      }
+    ]
+  );
 in
 pkgs.testers.runNixOSTest {
   name = "jellyfin-users";
 
-  nodes.machine =
-    { lib, ... }:
-    {
-      imports = [ nixosModules ];
+  nodes.machine = { lib, ... }: {
+    imports = [ nixosModules ];
 
-      virtualisation = {
-        diskSize = 3 * 1024;
-        memorySize = 4096;
-        cores = 4;
-      };
+    virtualisation = {
+      diskSize = 3 * 1024;
+      memorySize = 4096;
+      cores = 4;
+    };
 
-      nixflix = {
+    nixflix = {
+      enable = true;
+
+      jellyfin = {
         enable = true;
 
-        jellyfin = {
-          enable = true;
+        apiKey._secret = pkgs.writeText "jellyfin-apikey" "jellyfinApiKey1111111111111111111";
 
-          apiKey._secret = pkgs.writeText "jellyfin-apikey" "jellyfinApiKey1111111111111111111";
-
-          users = {
-            admin = {
-              password._secret = pkgs.writeText "kiri_password" "321password";
-              policy.isAdministrator = true;
-            };
-
-            kiri = {
-              password = "password123";
-              enableAutoLogin = false;
-              mutable = false;
-
-              configuration = {
-                audioLanguagePreference = "eng";
-                playDefaultAudioTrack = false;
-                subtitleLanguagePreference = "spa";
-                displayMissingEpisodes = true;
-                subtitleMode = "Always";
-                displayCollectionsView = true;
-                enableLocalPassword = true;
-                hidePlayedInLatest = false;
-                rememberAudioSelections = false;
-                rememberSubtitleSelections = false;
-                enableNextEpisodeAutoPlay = false;
-              };
-
-              policy = {
-                isAdministrator = false;
-                isHidden = false;
-                isDisabled = false;
-                enableAllChannels = false;
-                enableAllDevices = false;
-                enableAllFolders = false;
-                enableAudioPlaybackTranscoding = false;
-                enableCollectionManagement = true;
-                enableContentDeletion = true;
-                enableContentDownloading = false;
-                enableLiveTvAccess = false;
-                enableLiveTvManagement = false;
-                enableMediaConversion = false;
-                enableMediaPlayback = true;
-                enablePlaybackRemuxing = false;
-                enablePublicSharing = false;
-                enableRemoteAccess = true;
-                enableRemoteControlOfOtherUsers = true;
-                enableSharedDeviceControl = false;
-                enableSubtitleManagement = true;
-                enableSyncTranscoding = false;
-                enableVideoPlaybackTranscoding = false;
-                forceRemoteSourceTranscoding = true;
-                maxParentalRating = 18;
-                blockedTags = [
-                  "violence"
-                  "horror"
-                ];
-                allowedTags = [
-                  "comedy"
-                  "drama"
-                ];
-                blockUnratedItems = [
-                  "Movie"
-                  "Series"
-                ];
-                enableUserPreferenceAccess = false;
-                invalidLoginAttemptCount = 5;
-                loginAttemptsBeforeLockout = 5;
-                maxActiveSessions = 3;
-                remoteClientBitrateLimit = 8000000;
-                syncPlayAccess = "JoinGroups";
-                authenticationProviderId = "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider";
-                passwordResetProviderId = "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider";
-                maxParentalSubRating = 10;
-              };
-            };
+        users = {
+          admin = {
+            password._secret = pkgs.writeText "kiri_password" "321password";
+            policy.isAdministrator = true;
           };
 
-          system = {
-            serverName = "test-jellyfin-server";
-            preferredMetadataLanguage = "de";
-            metadataCountryCode = "DE";
-            uiCulture = "de-DE";
-            logFileRetentionDays = 7;
-            activityLogRetentionDays = 60;
-            enableMetrics = true;
-            enableNormalizedItemByNameIds = false;
-            isPortAuthorized = false;
-            quickConnectAvailable = false;
-            enableCaseSensitiveItemIds = false;
-            disableLiveTvChannelUserDataName = false;
-            sortReplaceCharacters = [
-              "-"
-              "_"
-            ];
-            sortRemoveCharacters = [
-              "!"
-              "?"
-            ];
-            sortRemoveWords = [
-              "der"
-              "die"
-              "das"
-            ];
-            minResumePct = 10;
-            maxResumePct = 85;
-            minAudiobookResume = 2;
-            maxAudiobookResume = 3;
-            minResumeDurationSeconds = 120;
-            inactiveSessionThreshold = 15;
-            libraryMonitorDelay = 30;
-            libraryUpdateDuration = 45;
-            cacheSize = 500;
-            imageSavingConvention = "Compatible";
-            imageExtractionTimeoutMs = 5000;
-            skipDeserializationForBasicTypes = false;
-            saveMetadataHidden = true;
-            enableFolderView = true;
-            enableGroupingMoviesIntoCollections = true;
-            enableGroupingShowsIntoCollections = true;
-            displaySpecialsWithinSeasons = false;
-            remoteClientBitrateLimit = 8000000;
-            enableSlowResponseWarning = false;
-            slowResponseThresholdMs = 1000;
-            corsHosts = [
-              "localhost"
-              "test.example.com"
-            ];
-            libraryScanFanoutConcurrency = 2;
-            libraryMetadataRefreshConcurrency = 4;
-            allowClientLogUpload = false;
-            enableExternalContentInSuggestions = false;
-            dummyChapterDuration = 10;
-            chapterImageResolution = "P720";
-            parallelImageEncodingLimit = 3;
-            castReceiverApplications = [
-              {
-                id = "CUSTOM123";
-                name = "Test Receiver";
-              }
-            ];
-            trickplayOptions = {
-              enableHwAcceleration = true;
-              enableHwEncoding = true;
-              enableKeyFrameOnlyExtraction = true;
-              scanBehavior = "Blocking";
-              processPriority = "Normal";
-              interval = 5000;
-              widthResolutions = [
-                320
-                480
-                720
+          kiri = {
+            password = "password123";
+            enableAutoLogin = false;
+            mutable = false;
+
+            configuration = {
+              audioLanguagePreference = "eng";
+              playDefaultAudioTrack = false;
+              subtitleLanguagePreference = "spa";
+              displayMissingEpisodes = true;
+              subtitleMode = "Always";
+              displayCollectionsView = true;
+              enableLocalPassword = true;
+              hidePlayedInLatest = false;
+              rememberAudioSelections = false;
+              rememberSubtitleSelections = false;
+              enableNextEpisodeAutoPlay = false;
+            };
+
+            policy = {
+              isAdministrator = false;
+              isHidden = false;
+              isDisabled = false;
+              enableAllChannels = false;
+              enableAllDevices = false;
+              enableAllFolders = false;
+              enableAudioPlaybackTranscoding = false;
+              enableCollectionManagement = true;
+              enableContentDeletion = true;
+              enableContentDownloading = false;
+              enableLiveTvAccess = false;
+              enableLiveTvManagement = false;
+              enableMediaConversion = false;
+              enableMediaPlayback = true;
+              enablePlaybackRemuxing = false;
+              enablePublicSharing = false;
+              enableRemoteAccess = true;
+              enableRemoteControlOfOtherUsers = true;
+              enableSharedDeviceControl = false;
+              enableSubtitleManagement = true;
+              enableSyncTranscoding = false;
+              enableVideoPlaybackTranscoding = false;
+              forceRemoteSourceTranscoding = true;
+              maxParentalRating = 18;
+              blockedTags = [
+                "violence"
+                "horror"
               ];
-              tileWidth = 8;
-              tileHeight = 8;
-              qscale = 6;
-              jpegQuality = 85;
-              processThreads = 2;
-            };
-            metadataOptions = [
-              {
-                itemType = "Movie";
-                disabledMetadataSavers = [ "Nfo" ];
-                disabledMetadataFetchers = [ "TheMovieDb" ];
-                localMetadataReaderOrder = [ "Nfo" ];
-                metadataFetcherOrder = [ "TheMovieDb" ];
-                disabledImageFetchers = [ "TheMovieDb" ];
-                imageFetcherOrder = [ "TheMovieDb" ];
-              }
-            ];
-            contentTypes = [
-              {
-                name = "test";
-                value = "application/test";
-              }
-            ];
-            pathSubstitutions = [
-              {
-                from = "/old/path";
-                to = "/new/path";
-              }
-            ];
-            codecsUsed = [
-              "h264"
-              "hevc"
-            ];
-            pluginRepositories = lib.mkForce {
-              "Jellyfin Universal Plugin Repo" = {
-                url = "https://raw.githubusercontent.com/kiriwalawren/nixflix/0acaaae364b83ef5aa68435d592561436624aa23/modules/jellyfin/system/jellyfin-universal-plugin-manifest.json";
-                hash = "sha256-pYD/mkZaJfSmXhCf+aE8hwV0iWZU34LD50hGDeKn58A=";
-                enabled = true;
-              };
-            };
-            enableLegacyAuthorization = false;
-          };
-
-          encoding = {
-            enableHardwareEncoding = false;
-            allowHevcEncoding = true;
-            allowAv1Encoding = true;
-            encodingThreadCount = 4;
-            transcodingTempPath = "/custom/transcode/path";
-            enableAudioVbr = true;
-            downMixAudioBoost = 3;
-            downMixStereoAlgorithm = "Rfc7845";
-            maxMuxingQueueSize = 4096;
-            enableThrottling = true;
-            throttleDelaySeconds = 120;
-            enableSegmentDeletion = true;
-            segmentKeepSeconds = 600;
-            hardwareAccelerationType = "vaapi";
-            vaapiDevice = "/dev/dri/renderD129";
-            enableTonemapping = true;
-            tonemappingAlgorithm = "hable";
-            tonemappingMode = "rgb";
-            tonemappingRange = "pc";
-            tonemappingDesat = 0.5;
-            tonemappingPeak = 200;
-            tonemappingParam = 1.5;
-            h264Crf = 20;
-            h265Crf = 25;
-            encoderPreset = "placebo";
-            deinterlaceDoubleRate = true;
-            deinterlaceMethod = "bwdif";
-            enableDecodingColorDepth10Hevc = false;
-            enableDecodingColorDepth10Vp9 = false;
-            hardwareDecodingCodecs = [
-              "h264"
-              "hevc"
-              "vp9"
-              "av1"
-            ];
-            enableSubtitleExtraction = false;
-            allowOnDemandMetadataBasedKeyframeExtractionForExtensions = [
-              "mkv"
-              "mp4"
-            ];
-          };
-
-          branding = {
-            customCss = ''
-              body {
-                background-color: #1a1a2e;
-              }
-              .headerTop {
-                background-color: #16213e;
-              }
-            '';
-            loginDisclaimer = ''
-              This is a test Jellyfin server.
-              Please use your assigned credentials.
-            '';
-            splashscreenEnabled = true;
-            splashscreenLocation =
-              pkgs.runCommand "test-splashscreen.png"
-                {
-                  buildInputs = [ pkgs.imagemagick ];
-                }
-                ''
-                  magick -size 1920x1080 xc:#1a1a2e $out
-                '';
-          };
-
-          libraries = {
-            "Test Movies" = {
-              collectionType = "movies";
-              paths = [
-                "/media/movies"
-                "/media/films"
+              allowedTags = [
+                "comedy"
+                "drama"
               ];
-              enabled = true;
-              enablePhotos = false;
-              enableRealtimeMonitor = false;
-              enableLUFSScan = false;
-              enableChapterImageExtraction = false;
-              extractChapterImagesDuringLibraryScan = false;
-              saveLocalMetadata = false;
-              enableAutomaticSeriesGrouping = false;
-              enableEmbeddedTitles = false;
-              enableEmbeddedExtrasTitles = false;
-              enableEmbeddedEpisodeInfos = false;
-              automaticRefreshIntervalDays = 90;
-              preferredMetadataLanguage = "en";
-              metadataCountryCode = "US";
-              seasonZeroDisplayName = "Extras";
-              metadataSavers = [ "Nfo" ];
-              disabledLocalMetadataReaders = [ "Nfo" ];
+              blockUnratedItems = [
+                "Movie"
+                "Series"
+              ];
+              enableUserPreferenceAccess = false;
+              invalidLoginAttemptCount = 5;
+              loginAttemptsBeforeLockout = 5;
+              maxActiveSessions = 3;
+              remoteClientBitrateLimit = 8000000;
+              syncPlayAccess = "JoinGroups";
+              authenticationProviderId = "Jellyfin.Server.Implementations.Users.DefaultAuthenticationProvider";
+              passwordResetProviderId = "Jellyfin.Server.Implementations.Users.DefaultPasswordResetProvider";
+              maxParentalSubRating = 10;
+            };
+          };
+        };
+
+        system = {
+          serverName = "test-jellyfin-server";
+          preferredMetadataLanguage = "de";
+          metadataCountryCode = "DE";
+          uiCulture = "de-DE";
+          logFileRetentionDays = 7;
+          activityLogRetentionDays = 60;
+          enableMetrics = true;
+          enableNormalizedItemByNameIds = false;
+          isPortAuthorized = false;
+          quickConnectAvailable = false;
+          enableCaseSensitiveItemIds = false;
+          disableLiveTvChannelUserDataName = false;
+          sortReplaceCharacters = [
+            "-"
+            "_"
+          ];
+          sortRemoveCharacters = [
+            "!"
+            "?"
+          ];
+          sortRemoveWords = [
+            "der"
+            "die"
+            "das"
+          ];
+          minResumePct = 10;
+          maxResumePct = 85;
+          minAudiobookResume = 2;
+          maxAudiobookResume = 3;
+          minResumeDurationSeconds = 120;
+          inactiveSessionThreshold = 15;
+          libraryMonitorDelay = 30;
+          libraryUpdateDuration = 45;
+          cacheSize = 500;
+          imageSavingConvention = "Compatible";
+          imageExtractionTimeoutMs = 5000;
+          skipDeserializationForBasicTypes = false;
+          saveMetadataHidden = true;
+          enableFolderView = true;
+          enableGroupingMoviesIntoCollections = true;
+          enableGroupingShowsIntoCollections = true;
+          displaySpecialsWithinSeasons = false;
+          remoteClientBitrateLimit = 8000000;
+          enableSlowResponseWarning = false;
+          slowResponseThresholdMs = 1000;
+          corsHosts = [
+            "localhost"
+            "test.example.com"
+          ];
+          libraryScanFanoutConcurrency = 2;
+          libraryMetadataRefreshConcurrency = 4;
+          allowClientLogUpload = false;
+          enableExternalContentInSuggestions = false;
+          dummyChapterDuration = 10;
+          chapterImageResolution = "P720";
+          parallelImageEncodingLimit = 3;
+          castReceiverApplications = [
+            {
+              id = "CUSTOM123";
+              name = "Test Receiver";
+            }
+          ];
+          trickplayOptions = {
+            enableHwAcceleration = true;
+            enableHwEncoding = true;
+            enableKeyFrameOnlyExtraction = true;
+            scanBehavior = "Blocking";
+            processPriority = "Normal";
+            interval = 5000;
+            widthResolutions = [
+              320
+              480
+              720
+            ];
+            tileWidth = 8;
+            tileHeight = 8;
+            qscale = 6;
+            jpegQuality = 85;
+            processThreads = 2;
+          };
+          metadataOptions = [
+            {
+              itemType = "Movie";
+              disabledMetadataSavers = [ "Nfo" ];
+              disabledMetadataFetchers = [ "TheMovieDb" ];
               localMetadataReaderOrder = [ "Nfo" ];
-              disabledSubtitleFetchers = [ "Open Subtitles" ];
-              subtitleFetcherOrder = [ "Open Subtitles" ];
-              skipSubtitlesIfEmbeddedSubtitlesPresent = false;
-              skipSubtitlesIfAudioTrackMatches = false;
-              subtitleDownloadLanguages = [
-                "eng"
-                "spa"
-                "fra"
-              ];
-              requirePerfectSubtitleMatch = false;
-              saveSubtitlesWithMedia = false;
-              allowEmbeddedSubtitles = "AllowText";
-              automaticallyAddToCollection = false;
-            };
-
-            "Test Music" = {
-              collectionType = "music";
-              paths = [ "/media/music" ];
+              metadataFetcherOrder = [ "TheMovieDb" ];
+              disabledImageFetchers = [ "TheMovieDb" ];
+              imageFetcherOrder = [ "TheMovieDb" ];
+            }
+          ];
+          contentTypes = [
+            {
+              name = "test";
+              value = "application/test";
+            }
+          ];
+          pathSubstitutions = [
+            {
+              from = "/old/path";
+              to = "/new/path";
+            }
+          ];
+          codecsUsed = [
+            "h264"
+            "hevc"
+          ];
+          pluginRepositories = lib.mkForce {
+            "LAPSE Repo" = {
+              url = builtins.unsafeDiscardStringContext "file://${lapseManifest}";
+              hash = manifestHash lapseManifest;
               enabled = true;
-              preferNonstandardArtistsTag = true;
-              useCustomTagDelimiters = true;
-              customTagDelimiters = [
-                ";"
-                "|"
-              ];
-              saveLyricsWithMedia = true;
-              disabledLyricFetchers = [ ];
-              lyricFetcherOrder = [ "LrcLib" ];
-              disabledMediaSegmentProviders = [ ];
-              mediaSegmentProviderOrder = [ "ChapterDb" ];
-              typeOptions = [
-                {
-                  type = "MusicAlbum";
-                  metadataFetchers = [
-                    "TheAudioDB"
-                    "MusicBrainz"
-                  ];
-                  metadataFetcherOrder = [
-                    "TheAudioDB"
-                    "MusicBrainz"
-                  ];
-                  imageFetchers = [ "TheAudioDB" ];
-                  imageFetcherOrder = [ "TheAudioDB" ];
-                  imageOptions = [
-                    {
-                      type = "Primary";
-                      limit = 1;
-                      minWidth = 300;
-                    }
-                    {
-                      type = "Backdrop";
-                      limit = 3;
-                      minWidth = 1920;
-                    }
-                  ];
-                }
-              ];
             };
           };
+          enableLegacyAuthorization = false;
+        };
 
-          plugins = {
-            "Intro Skipper" = {
-              # This plugin has a pre-configured package, so it needs to be enabled explicitly
-              enable = true;
-              package = jellyfinPlugins.fromRepo {
-                version = "12.0.4.0";
-                hash = "sha256-sPEZXGB3s+YI1E9+qJ3EWdKFu2gdqK7LfNjV4QjMlnA=";
-              };
-              config.PreferredAudioLanguage._secret = pkgs.writeText "intro-skipper-language" "introskipperlang1111111111111111111";
+        encoding = {
+          enableHardwareEncoding = false;
+          allowHevcEncoding = true;
+          allowAv1Encoding = true;
+          encodingThreadCount = 4;
+          transcodingTempPath = "/custom/transcode/path";
+          enableAudioVbr = true;
+          downMixAudioBoost = 3;
+          downMixStereoAlgorithm = "Rfc7845";
+          maxMuxingQueueSize = 4096;
+          enableThrottling = true;
+          throttleDelaySeconds = 120;
+          enableSegmentDeletion = true;
+          segmentKeepSeconds = 600;
+          hardwareAccelerationType = "vaapi";
+          vaapiDevice = "/dev/dri/renderD129";
+          enableTonemapping = true;
+          tonemappingAlgorithm = "hable";
+          tonemappingMode = "rgb";
+          tonemappingRange = "pc";
+          tonemappingDesat = 0.5;
+          tonemappingPeak = 200;
+          tonemappingParam = 1.5;
+          h264Crf = 20;
+          h265Crf = 25;
+          encoderPreset = "placebo";
+          deinterlaceDoubleRate = true;
+          deinterlaceMethod = "bwdif";
+          enableDecodingColorDepth10Hevc = false;
+          enableDecodingColorDepth10Vp9 = false;
+          hardwareDecodingCodecs = [
+            "h264"
+            "hevc"
+            "vp9"
+            "av1"
+          ];
+          enableSubtitleExtraction = false;
+          allowOnDemandMetadataBasedKeyframeExtractionForExtensions = [
+            "mkv"
+            "mp4"
+          ];
+        };
+
+        branding = {
+          customCss = ''
+            body {
+              background-color: #1a1a2e;
+            }
+            .headerTop {
+              background-color: #16213e;
+            }
+          '';
+          loginDisclaimer = ''
+            This is a test Jellyfin server.
+            Please use your assigned credentials.
+          '';
+          splashscreenEnabled = true;
+          splashscreenLocation =
+            pkgs.runCommand "test-splashscreen.png" { buildInputs = [ pkgs.imagemagick ]; }
+              ''
+                magick -size 1920x1080 xc:#1a1a2e $out
+              '';
+        };
+
+        libraries = {
+          "Test Movies" = {
+            collectionType = "movies";
+            paths = [
+              "/media/movies"
+              "/media/films"
+            ];
+            enabled = true;
+            enablePhotos = false;
+            enableRealtimeMonitor = false;
+            enableLUFSScan = false;
+            enableChapterImageExtraction = false;
+            extractChapterImagesDuringLibraryScan = false;
+            saveLocalMetadata = false;
+            enableAutomaticSeriesGrouping = false;
+            enableEmbeddedTitles = false;
+            enableEmbeddedExtrasTitles = false;
+            enableEmbeddedEpisodeInfos = false;
+            automaticRefreshIntervalDays = 90;
+            preferredMetadataLanguage = "en";
+            metadataCountryCode = "US";
+            seasonZeroDisplayName = "Extras";
+            metadataSavers = [ "Nfo" ];
+            disabledLocalMetadataReaders = [ "Nfo" ];
+            localMetadataReaderOrder = [ "Nfo" ];
+            disabledSubtitleFetchers = [ "Open Subtitles" ];
+            subtitleFetcherOrder = [ "Open Subtitles" ];
+            skipSubtitlesIfEmbeddedSubtitlesPresent = false;
+            skipSubtitlesIfAudioTrackMatches = false;
+            subtitleDownloadLanguages = [
+              "eng"
+              "spa"
+              "fra"
+            ];
+            requirePerfectSubtitleMatch = false;
+            saveSubtitlesWithMedia = false;
+            allowEmbeddedSubtitles = "AllowText";
+            automaticallyAddToCollection = false;
+          };
+
+          "Test Music" = {
+            collectionType = "music";
+            paths = [ "/media/music" ];
+            enabled = true;
+            preferNonstandardArtistsTag = true;
+            useCustomTagDelimiters = true;
+            customTagDelimiters = [
+              ";"
+              "|"
+            ];
+            saveLyricsWithMedia = true;
+            disabledLyricFetchers = [ ];
+            lyricFetcherOrder = [ "LrcLib" ];
+            disabledMediaSegmentProviders = [ ];
+            mediaSegmentProviderOrder = [ "ChapterDb" ];
+            typeOptions = [
+              {
+                type = "MusicAlbum";
+                metadataFetchers = [
+                  "TheAudioDB"
+                  "MusicBrainz"
+                ];
+                metadataFetcherOrder = [
+                  "TheAudioDB"
+                  "MusicBrainz"
+                ];
+                imageFetchers = [ "TheAudioDB" ];
+                imageFetcherOrder = [ "TheAudioDB" ];
+                imageOptions = [
+                  {
+                    type = "Primary";
+                    limit = 1;
+                    minWidth = 300;
+                  }
+                  {
+                    type = "Backdrop";
+                    limit = 3;
+                    minWidth = 1920;
+                  }
+                ];
+              }
+            ];
+          };
+        };
+
+        plugins = {
+          # Uses the default package baked in from plugins.json, proving the real
+          # generated manifest actually includes it.
+          "Intro Skipper" = {
+            enable = true;
+            config.PreferredAudioLanguage._secret = pkgs.writeText "intro-skipper-language" "introskipperlang1111111111111111111";
+          };
+
+          # Proves the fromRepo/pluginRepositories resolution path still works, using a
+          # less critical plugin than Intro Skipper.
+          "LAPSE" = {
+            enable = true;
+            package = jellyfinPlugins.fromRepo {
+              version = "2.1.2.0";
+              hash = "sha256-vNFHIj/AGSOft7zP4GkE/TSln4UkHSk1ZRClmmeBEYo=";
             };
           };
         };
       };
     };
+  };
 
   testScript = ''
     start_all()
@@ -718,10 +752,10 @@ pkgs.testers.runNixOSTest {
         assert len(system_config['PluginRepositories']) == 1, \
             f"Should have 1 plugin repository, got {len(system_config.get('PluginRepositories', []))}"
         plugin_repo = system_config['PluginRepositories'][0]
-        assert plugin_repo['Name'] == 'Jellyfin Universal Plugin Repo', \
-            f"Plugin repo Name should be 'Jellyfin Universal Plugin Repo', got {plugin_repo.get('Name')}"
-        assert 'kiriwalawren/nixflix' in plugin_repo['Url'], \
-            f"Plugin repo Url should point to kiriwalawren/nixflix repo, got {plugin_repo.get('Url')}"
+        assert plugin_repo['Name'] == 'LAPSE Repo', \
+            f"Plugin repo Name should be 'LAPSE Repo', got {plugin_repo.get('Name')}"
+        assert 'lapse-manifest' in plugin_repo['Url'], \
+            f"Plugin repo Url should point to the test fixture manifest, got {plugin_repo.get('Url')}"
         assert plugin_repo['Enabled'] == True, \
             f"Plugin repo Enabled should be True, got {plugin_repo.get('Enabled')}"
         assert system_config['EnableLegacyAuthorization'] == False, \
@@ -878,10 +912,12 @@ pkgs.testers.runNixOSTest {
 
         introskipper_plugins = [p for p in plugins if p['Name'] == 'Intro Skipper']
         assert len(introskipper_plugins) == 1, \
-            f"Expected 1 Intro Skipper plugin, found {len(introskipper_plugins)}. Installed plugins: {[p['Name'] for p in plugins]}"
+            f"Expected 1 Intro Skipper plugin, found {len(introskipper_plugins)}. Installed plugins: {[p['Name'] for p in plugins]}. " \
+            "Intro Skipper is baked in from plugins.json -- if it's missing, check that it's still present there."
         introskipper = introskipper_plugins[0]
         plugin_id = introskipper['Id']
-        print(f"Intro Skipper plugin installed with id: {plugin_id}")
+        introskipper_version = introskipper['Version']
+        print(f"Intro Skipper plugin installed with id: {plugin_id}, version: {introskipper_version}")
 
         print("Querying Intro Skipper plugin configuration...")
         plugin_config_json = machine.succeed(
@@ -893,8 +929,17 @@ pkgs.testers.runNixOSTest {
             f"PreferredAudioLanguage should be 'introskipperlang1111111111111111111', got {plugin_config.get('PreferredAudioLanguage')}"
 
         print("Verifying packaged plugin sync...")
-        machine.succeed("test -d '/var/lib/jellyfin/plugins/Intro Skipper_12.0.4.0'")
-        machine.succeed("test -f '/var/lib/jellyfin/plugins/Intro Skipper_12.0.4.0/IntroSkipper.dll'")
+        machine.succeed("test -d '/var/lib/jellyfin/plugins/Intro Skipper'")
+        machine.succeed("test -f '/var/lib/jellyfin/plugins/Intro Skipper/IntroSkipper.dll'")
+
+        lapse_plugins = [p for p in plugins if p['Name'] == 'LAPSE']
+        assert len(lapse_plugins) == 1, \
+            f"Expected 1 LAPSE plugin, found {len(lapse_plugins)}. Installed plugins: {[p['Name'] for p in plugins]}"
+        print(f"LAPSE plugin installed with id: {lapse_plugins[0]['Id']}")
+
+        print("Verifying repo-resolved plugin sync...")
+        machine.succeed("test -d '/var/lib/jellyfin/plugins/LAPSE_2.1.2.0'")
+        machine.succeed("test -f '/var/lib/jellyfin/plugins/LAPSE_2.1.2.0/Jellyfin.Plugin.Lapse.dll'")
 
         print("All plugin management assertions passed!")
   '';

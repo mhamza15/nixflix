@@ -1,8 +1,4 @@
-{
-  lib,
-  config,
-  ...
-}:
+{ lib, config, ... }:
 with lib;
 let
   mkStrOption =
@@ -238,17 +234,13 @@ in
           };
         });
       default = [
-        {
-          itemType = "Movie";
-        }
+        { itemType = "Movie"; }
         {
           itemType = "MusicVideo";
           disabledMetadataFetchers = [ "The Open Movie Database" ];
           disabledImageFetchers = [ "The Open Movie Database" ];
         }
-        {
-          itemType = "Series";
-        }
+        { itemType = "Series"; }
         {
           itemType = "MusicAlbum";
           disabledMetadataFetchers = [ "TheAudioDB" ];
@@ -257,15 +249,9 @@ in
           itemType = "MusicArtist";
           disabledMetadataFetchers = [ "TheAudioDB" ];
         }
-        {
-          itemType = "BoxSet";
-        }
-        {
-          itemType = "Season";
-        }
-        {
-          itemType = "Episode";
-        }
+        { itemType = "BoxSet"; }
+        { itemType = "Season"; }
+        { itemType = "Episode"; }
       ];
       description = ''
         Configure metadata fetching options for different media types.
@@ -357,14 +343,14 @@ in
       default = { };
       defaultText = literalExpression ''
         {
-          "Jellyfin Universal Plugin Repo" = {
+          "Jellyfin Official" = {
             url = "https://repo.jellyfin.org/files/plugin/manifest.json";
             hash = "1ykrpwya7px7dz4h92994kpqlf5jd429z7r4dckbw13236x5mpbx";
             enabled = true;
           };
         }
       '';
-      description = "Configure which plugin repositories you use. Jellyfin Universal Plugin Repo is always present in the set. Adding new plugin repositories will not remove it.";
+      description = "Configure which plugin repositories you use.";
     };
 
     enableExternalContentInSuggestions = mkOption {
@@ -409,9 +395,7 @@ in
 
     corsHosts = mkOption {
       type = with types; listOf str;
-      default = [
-        "*"
-      ];
+      default = [ "*" ];
     };
 
     activityLogRetentionDays = mkOption {

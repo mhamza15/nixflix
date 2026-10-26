@@ -27,17 +27,7 @@ let
           Optional repository name from `nixflix.jellyfin.system.pluginRepositories`.
           Leave unset to resolve by plugin name across all enabled repositories.
         '';
-        example = "Jellyfin Universal Plugin Repo";
-      };
-
-      relaxVersionCheck = lib.mkOption {
-        type = lib.types.bool;
-        default = false;
-        description = ''
-          Whether the performed version check should be relaxed for plugins known to work on the configured Jellyfin version, only checking that the target ABI is less than the Jellyfin version.
-
-          Not recommended to enable, use only if you're 100% sure the plugin supports the configured Jellyfin version!
-        '';
+        example = "Jellyfin Official";
       };
     };
   };
@@ -75,8 +65,7 @@ let
       configOption ? null,
     }:
     lib.types.submodule (
-      { name, ... }:
-      {
+      { name, ... }: {
         options = {
           package = mkPackageOption packageDefault;
 
@@ -140,14 +129,9 @@ in
       version,
       hash,
       repository ? null,
-      relaxVersionCheck ? false,
+      relaxVersionCheck ? null,
     }:
-    {
-      inherit
-        version
-        hash
-        repository
-        relaxVersionCheck
-        ;
-    };
+    lib.warnIf (relaxVersionCheck != null)
+      "nixflix.lib.jellyfinPlugins.fromRepo: `relaxVersionCheck` is deprecated and has no effect; plugins are now accepted whenever their targetAbi is <= the Jellyfin version. Remove it."
+      { inherit version hash repository; };
 }

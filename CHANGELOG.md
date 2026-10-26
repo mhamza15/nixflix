@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Jellyfin plugins whose `targetAbi` is older than 12 are no longer excluded on Jellyfin 12+. `targetAbi` is now treated purely as the minimum supported Jellyfin version, matching Jellyfin's own check, which grows the plugins available under `nixflix.jellyfin.plugins` from 179 to 330
+- The bundled Jellyfin plugin list now keeps the newest 10 versions of each plugin, and for each version only the build with the highest `targetAbi` that the pinned Jellyfin supports
+- The Jellyfin plugin update script now hashes plugin versions in parallel (one job per CPU, override with `PLUGIN_PREFETCH_CONCURRENCY`), reports progress as it goes, and avoids repeated manifest parsing
+
+### Added
+
+- Added Navidrome plugin support ([#372](https://github.com/kiriwalawren/nixflix/pull/372))
+- `nixflix.seerr` now asserts that the Seerr package in use is 3.5.0 or newer, failing evaluation with an actionable message instead of a bare `seerr-setup.service` `status=22` during activation. `nixflix.seerr.package` defaults to `pkgs.seerr` from your own nixpkgs rather than the nixpkgs nixflix pins, so this applies whether or not you set the option — update your nixpkgs, or set `nixflix.seerr.package` to a 3.5.0+ build. Seerr library calls also report their HTTP status on failure rather than exiting on a bare `curl -f` code
+- `nixflix.<sonarr|sonarr-anime|radarr|lidarr>.config.metadata` to configure metadata consumers (Settings → Metadata), e.g. Plex series match files and episode mappings ([#373](https://github.com/kiriwalawren/nixflix/pull/373))
+
+### Deprecated
+
+- `relaxVersionCheck` in `nixflix.lib.jellyfinPlugins.fromRepo` no longer has any effect and prints an evaluation warning when set. Remove it from your configuration
+
+### Fixed
+
+- Radarr, Sonarr, Sonarr Anime, Lidarr, Prowlarr, Seerr and Maintainerr data directories are now `0700` instead of `0755`. Their API keys (`config.xml`, Seerr's `settings.json`, Maintainerr's database) were readable by every local user: the \*arr units run with `UMask=0002`, so `config.xml` was `0664`. Existing installs are fixed on the next activation. ([#392](https://github.com/kiriwalawren/nixflix/pull/392))
+- Fix Seerr failure for "Jelyfin hostname already configured" error ([#265](https://github.com/kiriwalawren/nixflix/issues/265))
+- Fix Jellyfin library sync/enable on Seerr 3.5.0+ by switching to the new `POST /settings/jellyfin/library/sync` and per-library `PUT /settings/jellyfin/library/:id` endpoints, replacing the removed `?sync=true`/`?enable=ids` query params ([#385](https://github.com/kiriwalawren/nixflix/issues/385))
+- Restore top-level overrides (e.g. `enable`, `priority`, `tags`, `removeCompletedDownloads`/`removeFailedDownloads` for download clients, `includeHealthWarnings` for Notif) that were silently dropped by the Connect triggers fix in [#381](https://github.com/kiriwalawren/nixflix/pull/381) ([#383](https://github.com/kiriwalawren/nixflix/issues/383))
+- Fix Connect triggers not working in Notif ([#381](https://github.com/kiriwalawren/nixflix/pull/381))
+- `nixflix.seerr.jellyfin.libraryFilter` now correctly selects the configured libraries ([#376](https://github.com/kiriwalawren/nixflix/pull/376))
+- Jellyfin plugins no longer intermittently go missing from `nixflix.jellyfin.plugins.<name>` by removing the dependency on the rate-limited Jellyfin Universal Plugin Repo ([#379](https://github.com/kiriwalawren/nixflix/pull/379))
+
+## [3.2.0] - 2026-10-05
+
+### Changed
+
 - Made Nix module options more discoverable in docs ([#345](https://github.com/kiriwalawren/nixflix/issues/345))
 - Updated `nixflix.seerr.externalUrlScheme` deprecation instructions
 - Radarr's default Recyclarr quality profile now sets `min_format_score` to `180` instead of `1000`, to prefer media acquisition ([#305](https://github.com/kiriwalawren/nixflix/issues/305))
@@ -39,6 +67,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Seerr's derived Sonarr and Radarr instances now use `lib.mkDefault` per field, so overriding one field such as `activeProfileName` no longer drops every other derived instance
 - Profilarr now runs as a dedicated `profilarr` user instead of a hardcoded uid 1000, and owns its data directory, so the container entrypoint no longer chowns it away from the declared owner
 - Fix `nixflix.profilarr.timeZone` failing evaluation when `time.timeZone` is unset
+- Fix Recyclarr Custom Quality Profile causes Seerr to fail on first run ([#367](https://github.com/kiriwalawren/nixflix/pull/367))
 - Fix Starr apps failing to hardlink downloads into media directories by removing leftover per-directory `ReadWritePaths` bind mounts and setting qBittorrent's `UMask` to `0002` ([#347](https://github.com/kiriwalawren/nixflix/issues/347)).
   Torrents downloaded before this fix keep mode `0644`. To make them hardlinkable, run `sudo chmod -R g+w /data/downloads/torrent` once (adjust the path if you changed `nixflix.torrentClients.qbittorrent.downloadsDir`).
 - Fix `radarr-config` failing to apply host settings on Radarr 6.4.4 by sending `allowedHosts` in the host config payload ([#355](https://github.com/kiriwalawren/nixflix/issues/355))

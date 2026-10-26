@@ -12,95 +12,133 @@ in
 pkgsUnfree.testers.runNixOSTest {
   name = "sonarr-basic-test";
 
-  nodes.machine =
-    { pkgs, ... }:
-    {
-      imports = [ nixosModules ];
+  nodes.machine = { pkgs, ... }: {
+    imports = [ nixosModules ];
 
-      virtualisation.cores = 4;
+    virtualisation.cores = 4;
 
-      nixflix = {
+    nixflix = {
+      enable = true;
+
+      sonarr = {
         enable = true;
-
-        sonarr = {
-          enable = true;
-          user = "testuser";
-          mediaDirs = [ "/media/tv" ];
-          config = {
-            hostConfig = {
-              port = 8989;
-              username = "admin";
-              password._secret = pkgs.writeText "sonarr-password" "testpassword123";
-            };
-            apiKey._secret = pkgs.writeText "sonarr-apikey" "0123456789abcdef0123456789abcdef";
-            delayProfiles = [
-              {
-                enableUsenet = true;
-                enableTorrent = true;
-                preferredProtocol = "torrent";
-                usenetDelay = 0;
-                torrentDelay = 360;
-                bypassIfHighestQuality = true;
-                bypassIfAboveCustomFormatScore = false;
-                minimumCustomFormatScore = 0;
-                order = 2147483647;
-                tags = [ ];
-                id = 1;
-              }
-            ];
-            mediaManagement = {
-              autoUnmonitorPreviouslyDownloadedEpisodes = true;
-              recycleBin = "/var/lib/recyclebin";
-              recycleBinCleanupDays = 14;
-              downloadPropersAndRepacks = "doNotPrefer";
-              createEmptySeriesFolders = true;
-              deleteEmptyFolders = false;
-              fileDate = "localAirDate";
-              rescanAfterRefresh = "never";
-              setPermissionsLinux = true;
-              chmodFolder = "775";
-              chownGroup = "media";
-              episodeTitleRequired = "never";
-              skipFreeSpaceCheckWhenImporting = true;
-              minimumFreeSpaceWhenImporting = 200;
-              copyUsingHardlinks = false;
-              importExtraFiles = true;
-              extraFileExtensions = "srt,ass,ssa";
-              enableMediaInfo = false;
-            };
+        user = "testuser";
+        mediaDirs = [ "/media/tv" ];
+        config = {
+          hostConfig = {
+            port = 8989;
+            username = "admin";
+            password._secret = pkgs.writeText "sonarr-password" "testpassword123";
           };
-        };
-
-        torrentClients.qbittorrent = {
-          enable = true;
-          webuiPort = 8282;
-          password = "test123";
-          serverConfig = {
-            LegalNotice.Accepted = true;
-            Preferences = {
-              WebUI = {
-                Username = "admin";
-                Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+          apiKey._secret = pkgs.writeText "sonarr-apikey" "0123456789abcdef0123456789abcdef";
+          delayProfiles = [
+            {
+              enableUsenet = true;
+              enableTorrent = true;
+              preferredProtocol = "torrent";
+              usenetDelay = 0;
+              torrentDelay = 360;
+              bypassIfHighestQuality = true;
+              bypassIfAboveCustomFormatScore = false;
+              minimumCustomFormatScore = 0;
+              order = 2147483647;
+              tags = [ ];
+              id = 1;
+            }
+          ];
+          mediaManagement = {
+            autoUnmonitorPreviouslyDownloadedEpisodes = true;
+            recycleBin = "/var/lib/recyclebin";
+            recycleBinCleanupDays = 14;
+            downloadPropersAndRepacks = "doNotPrefer";
+            createEmptySeriesFolders = true;
+            deleteEmptyFolders = false;
+            fileDate = "localAirDate";
+            rescanAfterRefresh = "never";
+            setPermissionsLinux = true;
+            chmodFolder = "775";
+            chownGroup = "media";
+            episodeTitleRequired = "never";
+            skipFreeSpaceCheckWhenImporting = true;
+            minimumFreeSpaceWhenImporting = 200;
+            copyUsingHardlinks = false;
+            importExtraFiles = true;
+            extraFileExtensions = "srt,ass,ssa";
+            enableMediaInfo = false;
+          };
+          metadata = {
+            XbmcMetadata = {
+              enable = true;
+              fields = {
+                seriesMetadata = true;
+                seriesMetadataEpisodeGuide = true;
+                seriesMetadataUrl = true;
+                episodeMetadata = true;
+                episodeImageThumb = true;
+                seriesImages = true;
+                seasonImages = true;
+                episodeImages = true;
               };
-              General.Locale = "en";
             };
-          };
-        };
-
-        usenetClients.sabnzbd = {
-          enable = true;
-          settings = {
-            misc = {
-              api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
-              nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
-              port = 8080;
-              host = "127.0.0.1";
-              url_base = "/sabnzbd";
+            RoksboxMetadata = {
+              enable = false;
+              fields = {
+                episodeMetadata = true;
+                seriesImages = true;
+                seasonImages = true;
+                episodeImages = true;
+              };
+            };
+            WdtvMetadata = {
+              enable = true;
+              fields = {
+                episodeMetadata = true;
+                seriesImages = true;
+                seasonImages = true;
+                episodeImages = true;
+              };
+            };
+            PlexMetadata = {
+              enable = true;
+              fields = {
+                seriesPlexMatchFile = true;
+                episodeMappings = true;
+              };
             };
           };
         };
       };
+
+      torrentClients.qbittorrent = {
+        enable = true;
+        webuiPort = 8282;
+        password = "test123";
+        serverConfig = {
+          LegalNotice.Accepted = true;
+          Preferences = {
+            WebUI = {
+              Username = "admin";
+              Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+            };
+            General.Locale = "en";
+          };
+        };
+      };
+
+      usenetClients.sabnzbd = {
+        enable = true;
+        settings = {
+          misc = {
+            api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
+            nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
+            port = 8080;
+            host = "127.0.0.1";
+            url_base = "/sabnzbd";
+          };
+        };
+      };
     };
+  };
 
   testScript = ''
     start_all()
@@ -222,6 +260,51 @@ pkgsUnfree.testers.runNixOSTest {
     assert mm['extraFileExtensions'] == 'srt,ass,ssa', "extraFileExtensions not set"
     assert mm['enableMediaInfo'] == False, "enableMediaInfo not set"
     print("Media management configured successfully!")
+
+    # Wait for metadata service and verify metadata consumers
+    machine.wait_for_unit("sonarr-metadata.service", timeout=60)
+
+    metadata = machine.succeed(
+        "curl -s -H 'X-Api-Key: 0123456789abcdef0123456789abcdef' "
+        "http://127.0.0.1:8989/api/v3/metadata"
+    )
+    print(f"Metadata: {metadata}")
+    consumers = {m['implementation']: m for m in json.loads(metadata)}
+    expected_metadata = {
+        'XbmcMetadata': (True, {
+            'seriesMetadata': True,
+            'seriesMetadataEpisodeGuide': True,
+            'seriesMetadataUrl': True,
+            'episodeMetadata': True,
+            'episodeImageThumb': True,
+            'seriesImages': True,
+            'seasonImages': True,
+            'episodeImages': True,
+        }),
+        'RoksboxMetadata': (False, {
+            'episodeMetadata': True,
+            'seriesImages': True,
+            'seasonImages': True,
+            'episodeImages': True,
+        }),
+        'WdtvMetadata': (True, {
+            'episodeMetadata': True,
+            'seriesImages': True,
+            'seasonImages': True,
+            'episodeImages': True,
+        }),
+        'PlexMetadata': (True, {
+            'seriesPlexMatchFile': True,
+            'episodeMappings': True,
+        }),
+    }
+    for implementation, (enabled, fields) in expected_metadata.items():
+        consumer = consumers[implementation]
+        assert consumer['enable'] == enabled, f"{implementation} enable not set"
+        actual_fields = {f['name']: f['value'] for f in consumer['fields']}
+        for name, value in fields.items():
+            assert actual_fields[name] == value, f"{implementation}.{name} not set"
+    print("Metadata configured successfully!")
 
     # Verify the service is running under the correct user
     machine.succeed("pgrep -u testuser Sonarr")

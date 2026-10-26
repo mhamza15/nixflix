@@ -9,13 +9,7 @@ let
   secrets = import ../../../lib/secrets { inherit lib; };
   inherit (config) nixflix;
   cfg = nixflix.seerr;
-  authUtil = import ../authUtil.nix {
-    inherit
-      lib
-      pkgs
-      cfg
-      ;
-  };
+  authUtil = import ../authUtil.nix { inherit lib pkgs cfg; };
   baseUrl = "http://${cfg.connectionAddress}:${toString cfg.port}";
 
   sanitizeName = name: builtins.replaceStrings [ " " "-" ] [ "_" "_" ] name;
@@ -179,8 +173,25 @@ in
   config = mkIf (nixflix.enable && cfg.enable && cfg.radarr != { }) {
     systemd.services.seerr-radarr = {
       description = "Configure Seerr Radarr integration";
-      after = [ "seerr-libraries.service" ] ++ optional nixflix.radarr.enable "radarr-config.service";
-      requires = [ "seerr-libraries.service" ] ++ optional nixflix.radarr.enable "radarr-config.service";
+      after = [
+        "seerr-libraries.service"
+      ]
+      ++ optional nixflix.radarr.enable "radarr-config.service"
+      ++ optional nixflix.recyclarr.enable "recyclarr.service"
+      ++ optional (
+        nixflix.recyclarr.enable && nixflix.recyclarr.cleanupUnmanagedProfiles.enable
+      ) "recyclarr-cleanup-profiles.service";
+
+      wants = optional nixflix.recyclarr.enable "recyclarr.service";
+
+      requires = [
+        "seerr-libraries.service"
+      ]
+      ++ optional nixflix.radarr.enable "radarr-config.service"
+      ++ optional (
+        nixflix.recyclarr.enable && nixflix.recyclarr.cleanupUnmanagedProfiles.enable
+      ) "recyclarr-cleanup-profiles.service";
+
       wantedBy = [ "multi-user.target" ];
 
       serviceConfig = {

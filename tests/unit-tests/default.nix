@@ -496,9 +496,9 @@ in
             name = "Intro Skipper";
             versions = [
               {
-                version = "12.0.4.0";
+                version = "12.0.6.0";
                 inherit targetAbi;
-                sourceUrl = "https://github.com/intro-skipper/intro-skipper/releases/download/12.0/v12.0.4.0/intro-skipper-v12.0.4.0.zip";
+                sourceUrl = "https://github.com/intro-skipper/intro-skipper/releases/download/12.0/v12.0.6.0/intro-skipper-v12.0.6.0.zip";
               }
             ];
           }
@@ -521,8 +521,8 @@ in
               plugins."Intro Skipper" = {
                 enable = true;
                 package = jellyfinPlugins.fromRepo {
-                  version = "12.0.4.0";
-                  hash = "sha256-sPEZXGB3s+YI1E9+qJ3EWdKFu2gdqK7LfNjV4QjMlnA=";
+                  version = "12.0.6.0";
+                  hash = "sha256-g8Oiyt4NK8pyCXt2M1B7EpEL71kUGGkxtXSzKndUuOQ=";
                 };
               };
               users.admin = {
@@ -543,7 +543,7 @@ in
         lib.hasInfix "Syncing packaged plugin: Intro Skipper" pluginService.script
       )}
       ${check "resolved plugin directory name appears in service script" (
-        lib.hasInfix "Intro Skipper_12.0.4.0" pluginService.script
+        lib.hasInfix "Intro Skipper_12.0.6.0" pluginService.script
       )}
 
       echo 'PASS: jellyfin-plugin-repo-service-generation' > $out
@@ -558,7 +558,7 @@ in
             name = "LAPSE";
             versions = [
               {
-                version = "2.0.1.0";
+                version = "2.1.2.0";
                 targetAbi = "10.11.0.0";
                 sourceUrl = "https://github.com/Schwponaco-org/lapse-jellyfin-plugin/releases/download/v2.0.1/lapse-jellyfin-plugin-v2.0.1.zip";
               }
@@ -583,9 +583,8 @@ in
               plugins."LAPSE" = {
                 enable = true;
                 package = jellyfinPlugins.fromRepo {
-                  version = "2.0.1.0";
-                  hash = "sha256-A9C6P/m17axgmsWC4E3CFP1M/zcSmo+8mgh1cAD4Rls=";
-                  relaxVersionCheck = true;
+                  version = "2.1.2.0";
+                  hash = "sha256-vNFHIj/AGSOft7zP4GkE/TSln4UkHSk1ZRClmmeBEYo=";
                 };
               };
               users.admin = {
@@ -600,7 +599,7 @@ in
     in
     pkgs.runCommand "unit-test-jellyfin-plugin-repo-relaxed-version-check" { } ''
       ${check "Plugin with incompatible target ABI installed with relaxed version check" (
-        lib.hasInfix "LAPSE_2.0.1.0" pluginService.script
+        lib.hasInfix "LAPSE_2.1.2.0" pluginService.script
       )}
 
       echo 'PASS: jellyfin-plugin-repo-relax-version-check' > $out
@@ -807,6 +806,12 @@ in
                 url_base = "/sabnzbd";
               };
             };
+
+            downloadarr.sabnzbd = {
+              removeCompletedDownloads = false;
+              removeFailedDownloads = true;
+              priority = 1;
+            };
           };
         }
       ];
@@ -836,6 +841,20 @@ in
       ${check "radarr-downloadclients script does not use 0.0.0.0" (
         !lib.hasInfix "0.0.0.0" downloadClientsService.script
       )}
+      ${check "apply_field_overrides merges top-level overrides (enable, freeform properties)" (
+        lib.hasInfix ". + \$overrides" downloadClientsService.script
+      )}
+      ${check "sabnzbd download client enable is passed through as a top-level override" (
+        lib.hasInfix ''"enable":true'' downloadClientsService.script
+      )}
+      ${check
+        "sabnzbd freeform properties (removeCompletedDownloads/removeFailedDownloads/priority) are passed through"
+        (
+          lib.hasInfix ''"removeCompletedDownloads":false'' downloadClientsService.script
+          && lib.hasInfix ''"removeFailedDownloads":true'' downloadClientsService.script
+          && lib.hasInfix ''"priority":1'' downloadClientsService.script
+        )
+      }
       echo 'PASS: download-clients-no-reverse-proxy' > $out
     '';
 
@@ -911,6 +930,65 @@ in
         lib.hasInfix "Subsonic" lidarrNotifications.script
       )}
       echo 'PASS: notif-service-scoping' > $out
+    '';
+
+  notif-triggers =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+
+            jellyfin = {
+              enable = true;
+              apiKey = "test-jellyfin-key";
+            };
+
+            sonarr = {
+              enable = true;
+              config = {
+                hostConfig.port = 8989;
+                apiKey._secret = "/run/secrets/sonarr-api";
+              };
+            };
+
+            radarr = {
+              enable = true;
+              config = {
+                hostConfig.port = 7878;
+                apiKey._secret = "/run/secrets/radarr-api";
+              };
+            };
+
+            notif.jellyfin.triggers.sonarr = [
+              "onDownload"
+              "onHealthIssue"
+            ];
+
+            notif.jellyfin.includeHealthWarnings = true;
+          };
+        }
+      ];
+      sonarrNotifications = config.config.systemd.services."sonarr-notifications";
+      radarrNotifications = config.config.systemd.services."radarr-notifications";
+    in
+    pkgs.runCommand "unit-test-notif-triggers" { } ''
+      ${check "sonarr-notifications applies the overridden trigger set" (
+        lib.hasInfix ''["onDownload","onHealthIssue"]'' sonarrNotifications.script
+      )}
+      ${check "radarr-notifications still uses the jellyfin default trigger set" (
+        lib.hasInfix ''["onGrab","onDownload","onUpgrade","onRename","onMovieDelete","onMovieFileDelete","onMovieFileDeleteForUpgrade","onApplicationUpdate"]'' radarrNotifications.script
+      )}
+      ${check "sonarr-notifications applies the freeform includeHealthWarnings override" (
+        lib.hasInfix ''"includeHealthWarnings":true'' sonarrNotifications.script
+      )}
+      ${check "apply_field_overrides merges top-level overrides (name, enable, freeform properties)" (
+        lib.hasInfix ". + \$overrides" sonarrNotifications.script
+      )}
+      ${check "notification overrides do not include the nested triggers attrset" (
+        !lib.hasInfix "\"triggers\":" sonarrNotifications.script
+      )}
+      echo 'PASS: notif-triggers' > $out
     '';
 
   jellyfin-subtitles =
@@ -1266,6 +1344,51 @@ in
     in
     assertTest "settings-auth-overrides-hostconfig" (radarrCfg.settings.auth.method == "External");
 
+  # Data dirs hold API keys (config.xml, settings.json, databases), so no
+  # other local user may enter them.
+  state-dirs-private =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            radarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/radarr-api";
+            };
+            sonarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/sonarr-api";
+            };
+            prowlarr = {
+              enable = true;
+              config.apiKey._secret = "/run/secrets/prowlarr-api";
+            };
+            seerr = {
+              enable = true;
+              apiKey._secret = "/run/secrets/seerr-api";
+              jellyfin = {
+                adminUsername = "admin";
+                adminPassword = "password";
+              };
+            };
+            maintainerr.enable = true;
+          };
+        }
+      ];
+      cfg = config.config;
+      inherit (cfg.systemd.tmpfiles) settings;
+      mode = svc: dir: settings."10-${svc}".${dir}.d.mode;
+    in
+    pkgs.runCommand "unit-test-state-dirs-private" { } ''
+      ${check "radarr dataDir 0700" (mode "radarr" cfg.nixflix.radarr.dataDir == "0700")}
+      ${check "sonarr dataDir 0700" (mode "sonarr" cfg.nixflix.sonarr.dataDir == "0700")}
+      ${check "prowlarr dataDir 0700" (mode "prowlarr" cfg.nixflix.prowlarr.dataDir == "0700")}
+      ${check "seerr dataDir 0700" (mode "seerr" cfg.nixflix.seerr.dataDir == "0700")}
+      ${check "maintainerr dataDir 0700" (mode "maintainerr" cfg.nixflix.maintainerr.dataDir == "0700")}
+      echo 'PASS: state-dirs-private' > $out
+    '';
+
   nested-secret-in-list-jq-filter =
     let
       rawConfig = {
@@ -1280,25 +1403,21 @@ in
       plainFile = pkgs.writeText "plain.json" (builtins.toJSON (secrets.stripSecretRefs rawConfig));
       jqSecrets = secrets.mkNestedJqSecretArgs rawConfig;
     in
-    pkgs.runCommand "unit-test-nested-secret-in-list-jq-filter"
-      {
-        nativeBuildInputs = [ pkgs.jq ];
-      }
-      ''
-        merged=$(
-          echo '{"Entries":[]}' \
-            | jq \
-                ${jqSecrets.flagsString} \
-                --argjson plain "$(cat ${plainFile})" \
-                '. * $plain | ${lib.concatStringsSep " | " jqSecrets.assignments}'
-        )
+    pkgs.runCommand "unit-test-nested-secret-in-list-jq-filter" { nativeBuildInputs = [ pkgs.jq ]; } ''
+      merged=$(
+        echo '{"Entries":[]}' \
+          | jq \
+              ${jqSecrets.flagsString} \
+              --argjson plain "$(cat ${plainFile})" \
+              '. * $plain | ${lib.concatStringsSep " | " jqSecrets.assignments}'
+      )
 
-        value=$(echo "$merged" | jq -r '.Entries[0].Value')
-        if [ "$value" != "s3cr3t-value" ]; then
-          echo "FAIL: expected substituted value, got '$value'" && exit 1
-        fi
-        echo 'PASS: nested-secret-in-list-jq-filter' > $out
-      '';
+      value=$(echo "$merged" | jq -r '.Entries[0].Value')
+      if [ "$value" != "s3cr3t-value" ]; then
+        echo "FAIL: expected substituted value, got '$value'" && exit 1
+      fi
+      echo 'PASS: nested-secret-in-list-jq-filter' > $out
+    '';
 
   arr-unmanaged-media-dirs =
     let
@@ -1822,4 +1941,49 @@ in
       ${check "a disabled service adds no unit" (!(units ? radarr))}
       echo 'PASS: mount-dependencies-bind-media-services' > $out
     '';
+
+  # nixflix.seerr drives the 3.5.0+ library endpoints, so a package below that
+  # must be caught at eval time rather than as `status=22` from seerr-setup.
+  seerr-package-below-minimum-assertion =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            seerr = {
+              enable = true;
+              apiKey._secret = pkgs.writeText "seerr-apikey" "seerr-test-key";
+              package = pkgs.seerr.overrideAttrs (old: {
+                inherit (old) src;
+                version = "3.4.1";
+              });
+            };
+          };
+        }
+      ];
+      failed = builtins.filter (a: !a.assertion) config.config.assertions;
+    in
+    assertTest "seerr-package-below-minimum-assertion" (
+      builtins.any (a: lib.hasInfix "requires Seerr 3.5.0 or newer" a.message) failed
+    );
+
+  # The nixpkgs nixflix pins must itself satisfy nixflix's minimum.
+  seerr-pinned-package-meets-minimum =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+            seerr = {
+              enable = true;
+              apiKey._secret = pkgs.writeText "seerr-apikey" "seerr-test-key";
+            };
+          };
+        }
+      ];
+      failed = builtins.filter (a: !a.assertion) config.config.assertions;
+    in
+    assertTest "seerr-pinned-package-meets-minimum" (
+      !(builtins.any (a: lib.hasInfix "requires Seerr 3.5.0 or newer" a.message) failed)
+    );
 }

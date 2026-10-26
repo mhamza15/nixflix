@@ -27,94 +27,117 @@ in
 pkgsUnfree.testers.runNixOSTest {
   name = "lidarr-basic-test";
 
-  nodes.machine =
-    { pkgs, ... }:
-    {
-      imports = [ nixosModules ];
+  nodes.machine = { pkgs, ... }: {
+    imports = [ nixosModules ];
 
-      virtualisation.cores = 4;
+    virtualisation.cores = 4;
 
-      nixflix = {
+    nixflix = {
+      enable = true;
+
+      lidarr = {
         enable = true;
-
-        lidarr = {
-          enable = true;
-          user = "testuser";
-          mediaDirs = [ "/media/music" ];
-          config = {
-            hostConfig = {
-              port = 8686;
-              username = "admin";
-              password._secret = pkgs.writeText "lidarr-password" "testpassword123";
-            };
-            apiKey._secret = pkgs.writeText "lidarr-apikey" "5678efgh5678efgh5678efgh5678efgh";
-            delayProfiles = [
-              {
-                enableUsenet = true;
-                enableTorrent = true;
-                preferredProtocol = "torrent";
-                usenetDelay = 0;
-                torrentDelay = 360;
-                bypassIfHighestQuality = true;
-                bypassIfAboveCustomFormatScore = false;
-                minimumCustomFormatScore = 0;
-                order = 2147483647;
-                tags = [ ];
-                id = 1;
-              }
-            ];
-            mediaManagement = {
-              autoUnmonitorPreviouslyDownloadedTracks = true;
-              recycleBin = "/var/lib/recyclebin";
-              recycleBinCleanupDays = 14;
-              downloadPropersAndRepacks = "doNotPrefer";
-              createEmptyArtistFolders = true;
-              deleteEmptyFolders = false;
-              fileDate = "albumReleaseDate";
-              rescanAfterRefresh = "never";
-              setPermissionsLinux = true;
-              chmodFolder = "775";
-              chownGroup = "media";
-              skipFreeSpaceCheckWhenImporting = true;
-              minimumFreeSpaceWhenImporting = 200;
-              copyUsingHardlinks = false;
-              importExtraFiles = true;
-              extraFileExtensions = "srt,ass,ssa";
-              enableMediaInfo = false;
-            };
+        user = "testuser";
+        mediaDirs = [ "/media/music" ];
+        config = {
+          hostConfig = {
+            port = 8686;
+            username = "admin";
+            password._secret = pkgs.writeText "lidarr-password" "testpassword123";
           };
-        };
-
-        torrentClients.qbittorrent = {
-          enable = true;
-          webuiPort = 8282;
-          password = "test123";
-          serverConfig = {
-            LegalNotice.Accepted = true;
-            Preferences = {
-              WebUI = {
-                Username = "admin";
-                Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+          apiKey._secret = pkgs.writeText "lidarr-apikey" "5678efgh5678efgh5678efgh5678efgh";
+          delayProfiles = [
+            {
+              enableUsenet = true;
+              enableTorrent = true;
+              preferredProtocol = "torrent";
+              usenetDelay = 0;
+              torrentDelay = 360;
+              bypassIfHighestQuality = true;
+              bypassIfAboveCustomFormatScore = false;
+              minimumCustomFormatScore = 0;
+              order = 2147483647;
+              tags = [ ];
+              id = 1;
+            }
+          ];
+          mediaManagement = {
+            autoUnmonitorPreviouslyDownloadedTracks = true;
+            recycleBin = "/var/lib/recyclebin";
+            recycleBinCleanupDays = 14;
+            downloadPropersAndRepacks = "doNotPrefer";
+            createEmptyArtistFolders = true;
+            deleteEmptyFolders = false;
+            fileDate = "albumReleaseDate";
+            rescanAfterRefresh = "never";
+            setPermissionsLinux = true;
+            chmodFolder = "775";
+            chownGroup = "media";
+            skipFreeSpaceCheckWhenImporting = true;
+            minimumFreeSpaceWhenImporting = 200;
+            copyUsingHardlinks = false;
+            importExtraFiles = true;
+            extraFileExtensions = "srt,ass,ssa";
+            enableMediaInfo = false;
+          };
+          metadata = {
+            XbmcMetadata = {
+              enable = true;
+              fields = {
+                artistMetadata = true;
+                albumMetadata = true;
+                artistImages = true;
+                albumImages = true;
               };
-              General.Locale = "en";
             };
-          };
-        };
-
-        usenetClients.sabnzbd = {
-          enable = true;
-          settings = {
-            misc = {
-              api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
-              nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
-              port = 8080;
-              host = "127.0.0.1";
-              url_base = "/sabnzbd";
+            RoksboxMetadata = {
+              enable = true;
+              fields = {
+                trackMetadata = true;
+                artistImages = true;
+                albumImages = true;
+              };
+            };
+            WdtvMetadata = {
+              enable = false;
+              fields = {
+                trackMetadata = true;
+              };
             };
           };
         };
       };
+
+      torrentClients.qbittorrent = {
+        enable = true;
+        webuiPort = 8282;
+        password = "test123";
+        serverConfig = {
+          LegalNotice.Accepted = true;
+          Preferences = {
+            WebUI = {
+              Username = "admin";
+              Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+            };
+            General.Locale = "en";
+          };
+        };
+      };
+
+      usenetClients.sabnzbd = {
+        enable = true;
+        settings = {
+          misc = {
+            api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
+            nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
+            port = 8080;
+            host = "127.0.0.1";
+            url_base = "/sabnzbd";
+          };
+        };
+      };
     };
+  };
 
   testScript = ''
     import json
@@ -307,6 +330,39 @@ pkgsUnfree.testers.runNixOSTest {
     assert mm['extraFileExtensions'] == 'srt,ass,ssa', "extraFileExtensions not set"
     assert mm['enableMediaInfo'] == False, "enableMediaInfo not set"
     print("Media management configured successfully!")
+
+    # Wait for metadata service and verify metadata consumers
+    machine.wait_for_unit("lidarr-metadata.service", timeout=60)
+
+    metadata = machine.succeed(
+        "curl -s -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
+        "http://127.0.0.1:8686/api/v1/metadata"
+    )
+    print(f"Metadata: {metadata}")
+    consumers = {m['implementation']: m for m in json.loads(metadata)}
+    expected_metadata = {
+        'XbmcMetadata': (True, {
+            'artistMetadata': True,
+            'albumMetadata': True,
+            'artistImages': True,
+            'albumImages': True,
+        }),
+        'RoksboxMetadata': (True, {
+            'trackMetadata': True,
+            'artistImages': True,
+            'albumImages': True,
+        }),
+        'WdtvMetadata': (False, {
+            'trackMetadata': True,
+        }),
+    }
+    for implementation, (enabled, fields) in expected_metadata.items():
+        consumer = consumers[implementation]
+        assert consumer['enable'] == enabled, f"{implementation} enable not set"
+        actual_fields = {f['name']: f['value'] for f in consumer['fields']}
+        for name, value in fields.items():
+            assert actual_fields[name] == value, f"{implementation}.{name} not set"
+    print("Metadata configured successfully!")
 
     machine.succeed("pgrep -u testuser Lidarr")
   '';

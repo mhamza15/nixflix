@@ -8,10 +8,7 @@
 with lib;
 let
   cfg = config.nixflix.${serviceName};
-  inherit (import ./utils.nix { inherit lib pkgs serviceName; })
-    capitalizedName
-    mkSecureCurl
-    ;
+  inherit (import ./utils.nix { inherit lib pkgs serviceName; }) capitalizedName mkSecureCurl;
 
   releaseProfileType = types.submodule {
     options = {

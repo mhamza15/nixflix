@@ -50,6 +50,7 @@ in
     (import ./hostConfig.nix { inherit serviceName; })
     (import ./mediaManagement.nix { inherit serviceName; })
     (import ./mediaDirs.nix { inherit serviceName; })
+    (import ./metadata.nix { inherit serviceName; })
     (import ./postgres.nix { inherit serviceName; })
     (import ./releaseProfiles.nix { inherit serviceName; })
     (import ./rootFolders.nix { inherit serviceName; })
@@ -316,19 +317,18 @@ in
           home = cfg.dataDir;
           isSystemUser = true;
         }
-        // optionalAttrs (globals.uids ? ${cfg.user}) {
-          uid = globals.uids.${cfg.user};
-        };
+        // optionalAttrs (globals.uids ? ${cfg.user}) { uid = globals.uids.${cfg.user}; };
       };
 
-      networking.firewall = mkIf cfg.openFirewall {
-        allowedTCPPorts = [ cfg.config.hostConfig.port ];
-      };
+      networking.firewall = mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.config.hostConfig.port ]; };
 
+      # 0700: config.xml holds the API key, and the service's UMask 0002
+      # (for media hardlinks) makes it 0664, readable by any local user
+      # through a 0755 directory. Only the service itself uses its dataDir.
       systemd.tmpfiles.settings."10-${serviceName}" = {
         "${cfg.dataDir}".d = {
           inherit (cfg) user group;
-          mode = "0755";
+          mode = "0700";
         };
       };
 
@@ -345,10 +345,7 @@ in
           "nixflix-setup-dirs.service"
         ]
         ++ config.nixflix.serviceDependencies;
-        requires = [
-          "nixflix-setup-dirs.service"
-        ]
-        ++ config.nixflix.serviceDependencies;
+        requires = [ "nixflix-setup-dirs.service" ] ++ config.nixflix.serviceDependencies;
         wantedBy = [ "multi-user.target" ];
 
         serviceConfig = {

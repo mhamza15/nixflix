@@ -12,95 +12,126 @@ in
 pkgsUnfree.testers.runNixOSTest {
   name = "radarr-basic-test";
 
-  nodes.machine =
-    { pkgs, ... }:
-    {
-      imports = [ nixosModules ];
+  nodes.machine = { pkgs, ... }: {
+    imports = [ nixosModules ];
 
-      virtualisation.cores = 4;
+    virtualisation.cores = 4;
 
-      nixflix = {
+    nixflix = {
+      enable = true;
+
+      radarr = {
         enable = true;
-
-        radarr = {
-          enable = true;
-          user = "testuser";
-          mediaDirs = [ "/media/movies" ];
-          config = {
-            hostConfig = {
-              instanceName = "Radarr's Apostrophe Test";
-              port = 7878;
-              username = "admin";
-              password._secret = pkgs.writeText "radarr-password" "testpassword123";
-            };
-            apiKey._secret = pkgs.writeText "radarr-apikey" "abcd1234abcd1234abcd1234abcd1234";
-            delayProfiles = [
-              {
-                enableUsenet = true;
-                enableTorrent = true;
-                preferredProtocol = "torrent";
-                usenetDelay = 0;
-                torrentDelay = 360;
-                bypassIfHighestQuality = true;
-                bypassIfAboveCustomFormatScore = false;
-                minimumCustomFormatScore = 0;
-                order = 2147483647;
-                tags = [ ];
-                id = 1;
-              }
-            ];
-            mediaManagement = {
-              autoUnmonitorPreviouslyDownloadedMovies = true;
-              recycleBin = "/var/lib/recyclebin";
-              recycleBinCleanupDays = 14;
-              downloadPropersAndRepacks = "doNotPrefer";
-              createEmptyMovieFolders = true;
-              deleteEmptyFolders = false;
-              fileDate = "cinemas";
-              rescanAfterRefresh = "never";
-              setPermissionsLinux = true;
-              chmodFolder = "775";
-              chownGroup = "media";
-              skipFreeSpaceCheckWhenImporting = true;
-              minimumFreeSpaceWhenImporting = 200;
-              copyUsingHardlinks = false;
-              importExtraFiles = true;
-              extraFileExtensions = "srt,ass,ssa";
-              enableMediaInfo = false;
-            };
+        user = "testuser";
+        mediaDirs = [ "/media/movies" ];
+        config = {
+          hostConfig = {
+            instanceName = "Radarr's Apostrophe Test";
+            port = 7878;
+            username = "admin";
+            password._secret = pkgs.writeText "radarr-password" "testpassword123";
           };
-        };
-
-        torrentClients.qbittorrent = {
-          enable = true;
-          webuiPort = 8282;
-          password = "test123";
-          serverConfig = {
-            LegalNotice.Accepted = true;
-            Preferences = {
-              WebUI = {
-                Username = "admin";
-                Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+          apiKey._secret = pkgs.writeText "radarr-apikey" "abcd1234abcd1234abcd1234abcd1234";
+          delayProfiles = [
+            {
+              enableUsenet = true;
+              enableTorrent = true;
+              preferredProtocol = "torrent";
+              usenetDelay = 0;
+              torrentDelay = 360;
+              bypassIfHighestQuality = true;
+              bypassIfAboveCustomFormatScore = false;
+              minimumCustomFormatScore = 0;
+              order = 2147483647;
+              tags = [ ];
+              id = 1;
+            }
+          ];
+          mediaManagement = {
+            autoUnmonitorPreviouslyDownloadedMovies = true;
+            recycleBin = "/var/lib/recyclebin";
+            recycleBinCleanupDays = 14;
+            downloadPropersAndRepacks = "doNotPrefer";
+            createEmptyMovieFolders = true;
+            deleteEmptyFolders = false;
+            fileDate = "cinemas";
+            rescanAfterRefresh = "never";
+            setPermissionsLinux = true;
+            chmodFolder = "775";
+            chownGroup = "media";
+            skipFreeSpaceCheckWhenImporting = true;
+            minimumFreeSpaceWhenImporting = 200;
+            copyUsingHardlinks = false;
+            importExtraFiles = true;
+            extraFileExtensions = "srt,ass,ssa";
+            enableMediaInfo = false;
+          };
+          metadata = {
+            XbmcMetadata = {
+              enable = true;
+              fields = {
+                movieMetadata = true;
+                useMovieNfo = true;
+                movieMetadataLanguage = 1;
+                movieMetadataURL = true;
+                addCollectionName = true;
+                movieImages = true;
               };
-              General.Locale = "en";
             };
-          };
-        };
-
-        usenetClients.sabnzbd = {
-          enable = true;
-          settings = {
-            misc = {
-              api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
-              nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
-              port = 8080;
-              host = "127.0.0.1";
-              url_base = "/sabnzbd";
+            MediaBrowserMetadata = {
+              enable = true;
+              fields = {
+                movieMetadata = true;
+              };
+            };
+            RoksboxMetadata = {
+              enable = true;
+              fields = {
+                movieMetadata = true;
+                movieImages = true;
+              };
+            };
+            WdtvMetadata = {
+              enable = false;
+              fields = {
+                movieMetadata = true;
+                movieImages = true;
+              };
             };
           };
         };
       };
+
+      torrentClients.qbittorrent = {
+        enable = true;
+        webuiPort = 8282;
+        password = "test123";
+        serverConfig = {
+          LegalNotice.Accepted = true;
+          Preferences = {
+            WebUI = {
+              Username = "admin";
+              Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
+            };
+            General.Locale = "en";
+          };
+        };
+      };
+
+      usenetClients.sabnzbd = {
+        enable = true;
+        settings = {
+          misc = {
+            api_key._secret = pkgs.writeText "sabnzbd-apikey" "sabnzbd555555555555555555555555555";
+            nzb_key._secret = pkgs.writeText "sabnzbd-nzbkey" "sabnzbdnzb666666666666666666666";
+            port = 8080;
+            host = "127.0.0.1";
+            url_base = "/sabnzbd";
+          };
+        };
+      };
     };
+  };
 
   testScript = ''
     start_all()
@@ -212,7 +243,52 @@ pkgsUnfree.testers.runNixOSTest {
     assert mm['enableMediaInfo'] == False, "enableMediaInfo not set"
     print("Media management configured successfully!")
 
+    # Wait for metadata service and verify metadata consumers
+    machine.wait_for_unit("radarr-metadata.service", timeout=60)
+
+    metadata = machine.succeed(
+        "curl -s -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
+        "http://127.0.0.1:7878/api/v3/metadata"
+    )
+    print(f"Metadata: {metadata}")
+    consumers = {m['implementation']: m for m in json.loads(metadata)}
+    expected_metadata = {
+        'XbmcMetadata': (True, {
+            'movieMetadata': True,
+            'useMovieNfo': True,
+            'movieMetadataLanguage': 1,
+            'movieMetadataURL': True,
+            'addCollectionName': True,
+            'movieImages': True,
+        }),
+        'MediaBrowserMetadata': (True, {
+            'movieMetadata': True,
+        }),
+        'RoksboxMetadata': (True, {
+            'movieMetadata': True,
+            'movieImages': True,
+        }),
+        'WdtvMetadata': (False, {
+            'movieMetadata': True,
+            'movieImages': True,
+        }),
+    }
+    for implementation, (enabled, fields) in expected_metadata.items():
+        consumer = consumers[implementation]
+        assert consumer['enable'] == enabled, f"{implementation} enable not set"
+        actual_fields = {f['name']: f['value'] for f in consumer['fields']}
+        for name, value in fields.items():
+            assert actual_fields[name] == value, f"{implementation}.{name} not set"
+    print("Metadata configured successfully!")
+
     machine.succeed("pgrep -u testuser Radarr")
+
+    # config.xml holds the API key. The service runs with UMask 0002 (for
+    # media hardlinks), so the data dir itself must keep other users out.
+    print(machine.succeed("stat -c '%a %U:%G %n' /var/lib/radarr /var/lib/radarr/config.xml"))
+    machine.fail("runuser -u nobody -- cat /var/lib/radarr/config.xml")
+    dir_mode = machine.succeed("stat -c %a /var/lib/radarr").strip()
+    assert dir_mode == "700", f"Expected /var/lib/radarr mode 700, found {dir_mode}"
 
     # Radarr must be able to hardlink qBittorrent downloads into its media dir
     machine.succeed("systemctl show -p UMask --value qbittorrent | grep -qx 0002")

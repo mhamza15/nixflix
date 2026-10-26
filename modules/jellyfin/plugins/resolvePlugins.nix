@@ -11,14 +11,6 @@ let
 
   selectVersions = import ./selectVersions.nix;
 
-  stripVerificationBadge =
-    name:
-    lib.foldl' (acc: badge: if lib.hasSuffix badge acc then lib.removeSuffix badge acc else acc) name [
-      " [✓✓✓]"
-      " [✓✓]"
-      " [✓]"
-    ];
-
   dedupeMatches =
     matches:
     let
@@ -101,7 +93,7 @@ let
           repo:
           lib.concatMap (
             plugin:
-            if stripVerificationBadge plugin.name == pluginName then
+            if plugin.name == pluginName then
               map
                 (release: {
                   inherit (repo) name url;
@@ -126,10 +118,7 @@ let
         ) matchingRepositories
       );
 
-      selectedCompatibleMatches = selectVersions {
-        inherit lib jellyfinVersion;
-        inherit (sourceSpec) relaxVersionCheck;
-      } selectedMatches;
+      selectedCompatibleMatches = selectVersions { inherit lib jellyfinVersion; } selectedMatches;
 
       matchingRepositoriesSummary = lib.concatStringsSep ", " (
         lib.unique (map (match: match.name) selectedCompatibleMatches)
@@ -162,9 +151,7 @@ let
   resolvePluginResult =
     pluginName: pluginCfg:
     if pluginCfg.package == null || lib.isDerivation pluginCfg.package then
-      {
-        inherit pluginCfg;
-      }
+      { inherit pluginCfg; }
     else
       let
         sourceSpec = jellyfinPlugins.fromRepo pluginCfg.package;
