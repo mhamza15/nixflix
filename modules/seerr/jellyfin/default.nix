@@ -17,7 +17,10 @@ in
   config = mkIf (nixflix.enable && cfg.enable) {
     systemd.services.seerr-jellyfin = {
       description = "Configure Jellyfin settings in Seerr";
-      after = [ "seerr-user-settings.service" ];
+
+      # Wait for a local Jellyfin. An activation that restarts it can reach
+      # this unit while Jellyfin still answers 503.
+      after = [ "seerr-user-settings.service" ] ++ optional nixflix.jellyfin.enable "jellyfin.service";
       requires = [ "seerr-user-settings.service" ];
       wantedBy = [ "multi-user.target" ];
 

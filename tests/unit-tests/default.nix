@@ -379,6 +379,45 @@ in
       && systemdUnits ? seerr-user-settings
     );
 
+  # Test that seerr-jellyfin waits for a local Jellyfin, which can still be
+  # starting when an activation restarts both
+  seerr-jellyfin-ordering =
+    let
+      seerrJellyfinAfter =
+        jellyfin:
+        (evalConfig [
+          {
+            nixflix = {
+              enable = true;
+              inherit jellyfin;
+              seerr = {
+                enable = true;
+                apiKey._secret = "/run/secrets/seerr-api";
+                jellyfin = {
+                  adminUsername = "admin";
+                  adminPassword = "password";
+                };
+              };
+            };
+          }
+        ]).config.systemd.services.seerr-jellyfin.after;
+
+      local = seerrJellyfinAfter {
+        enable = true;
+        users.admin = {
+          password = "password";
+          policy.isAdministrator = true;
+        };
+      };
+
+      remote = seerrJellyfinAfter { enable = false; };
+    in
+    pkgs.runCommand "unit-test-seerr-jellyfin-ordering" { } ''
+      ${check "waits for a local jellyfin" (lib.elem "jellyfin.service" local)}
+      ${check "does not wait for jellyfin when it is remote" (!lib.elem "jellyfin.service" remote)}
+      echo 'PASS: seerr-jellyfin-ordering' > $out
+    '';
+
   jellyfin-plugin-package-service-generation =
     let
       plugin = pkgs.runCommand "test-plugin-1.0.0" { } ''
